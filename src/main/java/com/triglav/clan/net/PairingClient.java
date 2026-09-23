@@ -11,6 +11,8 @@ import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.Player;
 import net.runelite.client.config.ConfigManager;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -30,6 +32,7 @@ public class PairingClient
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	private static final int POLL_SECONDS = 5;
 
+	private final Client client;
 	private final OkHttpClient httpClient;
 	private final ConfigManager configManager;
 	private final ScheduledExecutorService executor;
@@ -37,8 +40,9 @@ public class PairingClient
 	private ScheduledFuture<?> pollTask;
 
 	@Inject
-	private PairingClient(OkHttpClient httpClient, ConfigManager configManager, ScheduledExecutorService executor)
+	private PairingClient(Client client, OkHttpClient httpClient, ConfigManager configManager, ScheduledExecutorService executor)
 	{
+		this.client = client;
 		this.httpClient = httpClient;
 		this.configManager = configManager;
 		this.executor = executor;
@@ -60,7 +64,16 @@ public class PairingClient
 				return;
 			}
 
-			final Request request = new Request.Builder().url(url).post(RequestBody.create(JSON, "{}")).build();
+			// `playerName` lets the site show the member which account is asking to pair, so they can
+			// spot a code that isn't theirs before confirming (docs/plugin-handover.md §5).
+			final Player local = client.getLocalPlayer();
+			final JsonObject payload = new JsonObject();
+			if (local != null && local.getName() != null)
+			{
+				payload.addProperty("playerName", local.getName());
+			}
+
+			final Request request = new Request.Builder().url(url).post(RequestBody.create(JSON, payload.toString())).build();
 			try (Response response = httpClient.newCall(request).execute())
 			{
 				if (!response.isSuccessful() || response.body() == null)
