@@ -13,13 +13,19 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
   retyping them by hand.
 - **In-game feed** — short site notifications (upcoming events, confirmed bingo tiles, new LFG posts, approved
   shop orders) printed to the game chat.
+- **Slayer** — task streak and slayer points on every login.
+- **Achievement diary** — how many diary tiers are complete, on every login.
+- **Collection log** — a `COLLECTION` event the moment a new item unlocks.
+- **Pets** — a `PET` event when a pet is unlocked (name read off the NPC that spawns next to you).
+- **Deaths** — an approximate GP value lost, from the equipment+inventory value just before and just after death.
 
 ## Not implemented yet
 
-Collection log, combat achievements, achievement diary, quest count, slayer streak, pets and death tracking are
-not sent yet — the site can display them (same JSON shape as [Dink](https://github.com/pajlads/DinkPlugin)), the
-plugin just doesn't collect them yet. See `DECISIONS.md` for why (mostly: no reliable RuneLite API for those
-without the same widget/chat scraping Dink does, and getting the numbers wrong would corrupt the site's stats).
+Collection log **totals** (`completed`/`total`), combat achievement points, and quest count/points are not sent —
+the site can display them (same JSON shape as [Dink](https://github.com/pajlads/DinkPlugin)), but RuneLite has no
+reliable API for those without the same widget-reading and per-quest/per-task lookup tables Dink maintains, and a
+wrong number here would silently skew the site's automatic rank recommendations. See `DECISIONS.md` for the
+detail on each one — every choice below was checked against the actual `runelite-api` jar, not memory.
 
 ## Configuration
 

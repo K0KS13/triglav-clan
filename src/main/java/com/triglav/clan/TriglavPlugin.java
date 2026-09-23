@@ -3,11 +3,16 @@ package com.triglav.clan;
 import com.google.gson.JsonObject;
 import com.google.inject.Provides;
 import com.triglav.clan.collect.ClanRankReporter;
+import com.triglav.clan.collect.CollectionLogChat;
+import com.triglav.clan.collect.DeathTracker;
+import com.triglav.clan.collect.DiarySnapshot;
 import com.triglav.clan.collect.KillCountTracker;
 import com.triglav.clan.collect.LootCollector;
 import com.triglav.clan.collect.LootValue;
+import com.triglav.clan.collect.PetDetector;
 import com.triglav.clan.collect.Screenshot;
 import com.triglav.clan.collect.SkillSnapshot;
+import com.triglav.clan.collect.SlayerSnapshot;
 import com.triglav.clan.feed.FeedClient;
 import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.ConfigClient;
@@ -24,8 +29,11 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -87,6 +95,12 @@ public class TriglavPlugin extends Plugin
 	@Inject
 	private ScheduledExecutorService executor;
 
+	@Inject
+	private PetDetector petDetector;
+
+	@Inject
+	private DeathTracker deathTracker;
+
 	private static final int SCREENSHOT_TIMEOUT_SECONDS = 2;
 
 	private NavigationButton navButton;
@@ -147,6 +161,15 @@ public class TriglavPlugin extends Plugin
 	public void onChatMessage(ChatMessage event)
 	{
 		killCountTracker.onChatMessage(event);
+		petDetector.onChatMessage(event);
+
+		final String clogItem = CollectionLogChat.newItemName(event);
+		if (clogItem != null)
+		{
+			final JsonObject extra = new JsonObject();
+			extra.addProperty("itemName", clogItem);
+			apiClient.send(Envelope.create(client, "COLLECTION", extra), null);
+		}
 	}
 
 	@Subscribe
@@ -169,10 +192,45 @@ public class TriglavPlugin extends Plugin
 		captureScreenshot(png -> apiClient.send(envelope, png));
 	}
 
+	@Subscribe
+	public void onNpcSpawned(NpcSpawned event)
+	{
+		final String petName = petDetector.onNpcSpawned(client, event);
+		if (petName != null)
+		{
+			final JsonObject extra = new JsonObject();
+			extra.addProperty("petName", petName);
+			apiClient.send(Envelope.create(client, "PET", extra), null);
+		}
+	}
+
+	@Subscribe
+	public void onActorDeath(ActorDeath event)
+	{
+		if (event.getActor() == client.getLocalPlayer())
+		{
+			deathTracker.onLocalPlayerDied(client);
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		petDetector.onGameTick();
+
+		final JsonObject deathExtra = deathTracker.onGameTick(client);
+		if (deathExtra != null && config.sendDeaths())
+		{
+			apiClient.send(Envelope.create(client, "DEATH", deathExtra), null);
+		}
+	}
+
 	private void sendLogin()
 	{
 		final JsonObject extra = new JsonObject();
 		extra.add("skills", SkillSnapshot.build(client));
+		extra.add("slayer", SlayerSnapshot.build(client));
+		extra.add("achievementDiary", DiarySnapshot.build(client));
 		apiClient.send(Envelope.create(client, "LOGIN", extra), null);
 		log.debug("TRIGLAV: sent LOGIN snapshot");
 	}
