@@ -13,7 +13,9 @@ public interface TriglavConfig extends Config
 		keyName = "clanCode",
 		name = "Klanska koda",
 		description = "Nastavi se sama, ko v pluginu klikneš Poveži račun in kodo vneseš na strani (/profil). "
-			+ "Lahko jo tudi ročno prilepiš s strani, če povezovanje s klikom ne deluje.",
+			+ "Lahko jo tudi ročno prilepiš s strani, če povezovanje s klikom ne deluje. To je tvoj osebni "
+			+ "skrivni ključ — kdor ga ima, lahko v tvojem imenu pošilja lažne dogodke na stran. Ne deli ga z "
+			+ "nikomer; če ga kdo vidi, ga na strani (/profil) razveljavi.",
 		position = 0
 	)
 	default String clanCode()
@@ -24,7 +26,8 @@ public interface TriglavConfig extends Config
 	@ConfigItem(
 		keyName = "sendScreenshots",
 		name = "Pošiljaj screenshote",
-		description = "Priloži sliko dropom nad pragom in drugim dogodkom (smrt, pet, clog, level), enako kot Dink.",
+		description = "Priloži sliko dropom nad pragom in drugim dogodkom (smrt, pet, clog, level), enako kot Dink. "
+			+ "Slika pokaže tvoje uporabniško ime, chat in inventar/opremo v tistem trenutku.",
 		position = 1
 	)
 	default boolean sendScreenshots()

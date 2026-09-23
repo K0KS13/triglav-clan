@@ -32,6 +32,17 @@ detail on each one — every choice below was checked against the actual `runeli
 Members only ever see: the clan code (filled in automatically by pairing), and three switches — send
 screenshots, show in-game notifications, send deaths.
 
+## Privacy
+
+- The **clan code** is a personal secret key, not a shareable ID — whoever has it can send fake events to the
+  site under your name. Never share it; if it leaks, revoke it on `/profil` (issues a new one instantly).
+- Only what's listed under "What it does today" is sent, to `clan.kokalj.dev` only — no private messages, no
+  bank contents beyond what a loot/death event needs, no IP addresses.
+- **Screenshots**, when enabled, show your username, chat and whatever's in your inventory/equipment at that
+  moment.
+- Pairing shows the site which account is asking to connect (`playerName`) before a member confirms it, so a
+  code from someone else's plugin can't silently bind to your account.
+
 ## For clan members
 
 See the "Poveži TRIGLAV plugin" section on `/profil` on the site for setup instructions once the plugin is
