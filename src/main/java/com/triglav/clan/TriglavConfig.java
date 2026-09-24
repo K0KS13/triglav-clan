@@ -15,7 +15,9 @@ public interface TriglavConfig extends Config
 		description = "Tvoja koda TRG-XXXX s strani (clan.kokalj.dev/profil → Pokaži mojo kodo). Ista koda velja na "
 			+ "vseh tvojih računalnikih. Koda je kot geslo — kdor jo ima, lahko v tvojem imenu pošilja drope na stran. "
 			+ "Ne deli je in je ne kaži na streamu; če jo je kdo videl, jo na profilu zamenjaj.",
-		position = 0
+		position = 0,
+		// Entered only in the TRIGLAV side panel (naročnik: "naj se vpisuje samo v panelu"); stored here.
+		hidden = true
 	)
 	default String clanCode()
 	{

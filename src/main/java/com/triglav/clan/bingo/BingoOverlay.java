@@ -1,6 +1,7 @@
 package com.triglav.clan.bingo;
 
 import com.triglav.clan.TriglavConfig;
+import com.triglav.clan.util.GameText;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -50,7 +51,7 @@ public class BingoOverlay extends Overlay
 
 		g.setFont(FontManager.getRunescapeSmallFont());
 		final FontMetrics metrics = g.getFontMetrics();
-		final String header = board.teamName.isEmpty() ? board.title : board.title + " · " + board.teamName;
+		final String header = GameText.ascii(board.teamName.isEmpty() ? board.title : board.title + " - " + board.teamName);
 		final int width = Math.max(board.cols * (TILE + GAP) - GAP, metrics.stringWidth(header));
 		final int height = HEADER + board.rows * (TILE + GAP) - GAP;
 

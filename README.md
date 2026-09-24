@@ -34,7 +34,7 @@ detail on each one — every choice below was checked against the actual `runeli
 
 ## Configuration
 
-Members only ever see: the clan code, and four switches — send screenshots, show in-game notifications, send
+The clan code is entered only in the side panel. The plugin settings show just four switches — send screenshots, show in-game notifications, send
 deaths, show the bingo board. Everything else (screenshot threshold and so on) comes from the site: the plugin
 re-reads it on start, right after linking and every hour, so a change on the site needs no plugin update.
 

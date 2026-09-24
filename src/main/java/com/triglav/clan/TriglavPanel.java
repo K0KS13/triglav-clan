@@ -54,7 +54,7 @@ public class TriglavPanel extends PluginPanel
 		content.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		content.add(header("TRIGLAV"));
-		statusValue.setFont(FontManager.getRunescapeFont());
+		statusValue.setFont(FontManager.getDefaultFont());
 		statusValue.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
 		statusValue.setAlignmentX(Component.LEFT_ALIGNMENT);
 		content.add(statusValue);
@@ -69,7 +69,7 @@ public class TriglavPanel extends PluginPanel
 		content.add(Box.createVerticalStrut(6));
 		content.add(note("2. Kodo (TRG-XXXX) vpiši sem in klikni <b>Poveži</b>. Ista koda velja na vseh tvojih računalnikih."));
 		content.add(Box.createVerticalStrut(4));
-		codeField.setFont(FontManager.getRunescapeSmallFont());
+		codeField.setFont(FontManager.getDefaultFont());
 		codeField.setAlignmentX(Component.LEFT_ALIGNMENT);
 		codeField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		codeField.setToolTipText("TRG-XXXX");
@@ -82,13 +82,13 @@ public class TriglavPanel extends PluginPanel
 
 		content.add(spacer());
 		content.add(header("Gear setup"));
-		gearTitle.setFont(FontManager.getRunescapeSmallFont());
+		gearTitle.setFont(FontManager.getDefaultFont());
 		gearTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 		gearTitle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		gearTitle.setToolTipText("Ime setupa na strani (neobvezno)");
 		content.add(gearTitle);
 		content.add(Box.createVerticalStrut(4));
-		final JButton gearButton = button("Pošlji trenutni setup na stran");
+		final JButton gearButton = button("Pošlji setup na stran");
 		gearButton.addActionListener(e -> onSendGear.accept(gearTitle.getText().trim()));
 		content.add(gearButton);
 		content.add(Box.createVerticalStrut(4));
@@ -132,7 +132,7 @@ public class TriglavPanel extends PluginPanel
 	private static JLabel header(String text)
 	{
 		final JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeBoldFont());
+		label.setFont(FontManager.getDefaultBoldFont());
 		label.setForeground(ColorScheme.BRAND_ORANGE);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
@@ -142,7 +142,7 @@ public class TriglavPanel extends PluginPanel
 	private static JLabel note(String html)
 	{
 		final JLabel label = new JLabel("<html><body style='width:150px'>" + html + "</body></html>");
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(FontManager.getDefaultFont());
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
@@ -151,7 +151,7 @@ public class TriglavPanel extends PluginPanel
 	private static JButton button(String text)
 	{
 		final JButton button = new JButton(text);
-		button.setFont(FontManager.getRunescapeSmallFont());
+		button.setFont(FontManager.getDefaultFont());
 		button.setFocusPainted(false);
 		button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		button.setForeground(ColorScheme.LIGHT_GRAY_COLOR);

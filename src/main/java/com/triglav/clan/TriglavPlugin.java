@@ -23,6 +23,7 @@ import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.ConfigClient;
 import com.triglav.clan.net.Envelope;
 import com.triglav.clan.net.KeyStore;
+import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -383,6 +384,7 @@ public class TriglavPlugin extends Plugin
 
 	private void chat(String message)
 	{
-		clientThread.invoke(() -> client.addChatMessage(ChatMessageType.CONSOLE, "", message, null));
+		final String text = GameText.ascii(message);
+		clientThread.invoke(() -> client.addChatMessage(ChatMessageType.CONSOLE, "", text, null));
 	}
 }
