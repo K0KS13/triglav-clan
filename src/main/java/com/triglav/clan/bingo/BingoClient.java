@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.triglav.clan.TriglavConfig;
 import com.triglav.clan.net.ApiClient;
+import com.triglav.clan.net.KeyStore;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,14 +37,16 @@ public class BingoClient
 
 	private final OkHttpClient httpClient;
 	private final TriglavConfig config;
+	private final KeyStore keyStore;
 	private final ScheduledExecutorService executor;
 	private final AtomicReference<BingoBoard> board = new AtomicReference<>();
 
 	@Inject
-	private BingoClient(OkHttpClient httpClient, TriglavConfig config, ScheduledExecutorService executor)
+	private BingoClient(OkHttpClient httpClient, TriglavConfig config, KeyStore keyStore, ScheduledExecutorService executor)
 	{
 		this.httpClient = httpClient;
 		this.config = config;
+		this.keyStore = keyStore;
 		this.executor = executor;
 		executor.scheduleWithFixedDelay(this::refresh, 5, POLL_SECONDS, TimeUnit.SECONDS);
 	}
@@ -61,8 +64,8 @@ public class BingoClient
 
 	private void refresh()
 	{
-		final String clanCode = config.clanCode() == null ? "" : config.clanCode().trim();
-		if (clanCode.isEmpty() || !config.bingoOverlay())
+		final String clanCode = keyStore.ingestKey();
+		if (clanCode == null || !config.bingoOverlay())
 		{
 			board.set(null);
 			return;

@@ -4,8 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.triglav.clan.TriglavConfig;
 import com.triglav.clan.net.ApiClient;
+import com.triglav.clan.net.KeyStore;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
@@ -44,18 +44,18 @@ public class GearClient
 	private final ClientThread clientThread;
 	private final ItemManager itemManager;
 	private final OkHttpClient httpClient;
-	private final TriglavConfig config;
+	private final KeyStore keyStore;
 	private final ScheduledExecutorService executor;
 
 	@Inject
 	private GearClient(Client client, ClientThread clientThread, ItemManager itemManager, OkHttpClient httpClient,
-		TriglavConfig config, ScheduledExecutorService executor)
+		KeyStore keyStore, ScheduledExecutorService executor)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
 		this.itemManager = itemManager;
 		this.httpClient = httpClient;
-		this.config = config;
+		this.keyStore = keyStore;
 		this.executor = executor;
 	}
 
@@ -64,8 +64,8 @@ public class GearClient
 	 */
 	public void sendCurrentSetup(String title, Consumer<String> onResult)
 	{
-		final String clanCode = config.clanCode() == null ? "" : config.clanCode().trim();
-		if (clanCode.isEmpty())
+		final String clanCode = keyStore.ingestKey();
+		if (clanCode == null)
 		{
 			onResult.accept("najprej poveži račun.");
 			return;

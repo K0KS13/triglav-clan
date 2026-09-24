@@ -2,7 +2,6 @@ package com.triglav.clan.net;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.triglav.clan.TriglavConfig;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -16,24 +15,27 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 /**
- * Fetches GET /api/plugin/config/:key on startup and every 6h (docs/plugin-brief.md §4),
- * so the screenshot threshold follows whatever the site has configured.
+ * Fetches GET /api/plugin/config/:key on startup, right after linking and then hourly, so a change
+ * on the site (e.g. the screenshot threshold) reaches every plugin within the hour without a restart.
+ * docs/plugin-brief.md §4 said 6h; an hour is still one tiny request per member.
  */
 @Slf4j
 @Singleton
 public class ConfigClient
 {
-	private static final long REFRESH_HOURS = 6;
+	private static final long REFRESH_HOURS = 1;
 
 	private final OkHttpClient httpClient;
-	private final TriglavConfig config;
+	private final KeyStore keyStore;
+	private final ScheduledExecutorService executor;
 	private final AtomicReference<RemoteConfig> current = new AtomicReference<>(RemoteConfig.DEFAULT);
 
 	@Inject
-	private ConfigClient(OkHttpClient httpClient, TriglavConfig config, ScheduledExecutorService executor)
+	private ConfigClient(OkHttpClient httpClient, KeyStore keyStore, ScheduledExecutorService executor)
 	{
 		this.httpClient = httpClient;
-		this.config = config;
+		this.keyStore = keyStore;
+		this.executor = executor;
 		executor.scheduleWithFixedDelay(this::refresh, 0, REFRESH_HOURS, TimeUnit.HOURS);
 	}
 
@@ -42,10 +44,15 @@ public class ConfigClient
 		return current.get();
 	}
 
+	public void refreshNow()
+	{
+		executor.execute(this::refresh);
+	}
+
 	private void refresh()
 	{
-		final String clanCode = config.clanCode() == null ? "" : config.clanCode().trim();
-		if (clanCode.isEmpty())
+		final String clanCode = keyStore.ingestKey();
+		if (clanCode == null)
 		{
 			return;
 		}

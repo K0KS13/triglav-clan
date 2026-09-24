@@ -22,7 +22,7 @@ import com.triglav.clan.gear.GearClient;
 import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.ConfigClient;
 import com.triglav.clan.net.Envelope;
-import com.triglav.clan.net.PairingClient;
+import com.triglav.clan.net.KeyStore;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,6 +42,7 @@ import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -84,7 +85,10 @@ public class TriglavPlugin extends Plugin
 	private KillCountTracker killCountTracker;
 
 	@Inject
-	private PairingClient pairingClient;
+	private KeyStore keyStore;
+
+	@Inject
+	private ConfigManager configManager;
 
 	@Inject
 	private ClanRankReporter clanRankReporter;
@@ -137,18 +141,20 @@ public class TriglavPlugin extends Plugin
 			.build();
 		clientToolbar.addNavigation(navButton);
 
-		panel.update(apiClient.isPaired());
-		panel.setOnPair(this::startPairing);
+		panel.showLinked(keyStore.isLinked(), null);
+		panel.setOnLink(this::linkCode);
 		panel.setOnSendGear(title -> gearClient.sendCurrentSetup(title, result -> chat("TRIGLAV: " + result)));
 		feedClient.setSink(this::showFeedMessage);
 		overlayManager.add(bingoOverlay);
 		lastGameState = null;
+
+		// Re-check the stored code on every start: picks up a code changed on the site ("zamenjaj kodo").
+		keyStore.refresh(result -> onLinkResult(result, false));
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		pairingClient.cancel();
 		overlayManager.remove(bingoOverlay);
 		clientToolbar.removeNavigation(navButton);
 	}
@@ -275,19 +281,60 @@ public class TriglavPlugin extends Plugin
 		log.debug("TRIGLAV: sent LOGOUT");
 	}
 
-	private void startPairing()
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
 	{
-		pairingClient.start(
-			code ->
-			{
-				panel.showPairingCode(code);
-				chat("TRIGLAV: tvoja koda je " + code + " — vpiši jo na clan.kokalj.dev/profil (velja 10 min).");
-			},
-			ok ->
-			{
-				panel.update(ok && apiClient.isPaired());
-				chat(ok ? "TRIGLAV: račun povezan." : "TRIGLAV: parjenje ni uspelo, poskusi znova.");
-			});
+		if (TriglavConfig.GROUP.equals(event.getGroup()) && "clanCode".equals(event.getKey()))
+		{
+			keyStore.refresh(result -> onLinkResult(result, true));
+		}
+	}
+
+	/** Panel "Poveži": storing the code fires ConfigChanged, which does the actual linking. */
+	private void linkCode(String code)
+	{
+		if (code.isEmpty())
+		{
+			chat("TRIGLAV: vpiši svojo kodo s profila na clan.kokalj.dev (TRG-XXXX).");
+			return;
+		}
+
+		if (code.equals(config.clanCode()))
+		{
+			keyStore.refresh(result -> onLinkResult(result, true));
+		}
+		else
+		{
+			configManager.setConfiguration(TriglavConfig.GROUP, "clanCode", code);
+		}
+	}
+
+	/** @param announce true when the member just typed a code, false for the quiet check at startup */
+	private void onLinkResult(KeyStore.Result result, boolean announce)
+	{
+		panel.showLinked(keyStore.isLinked(), keyStore.linkedName());
+
+		switch (result)
+		{
+			case LINKED:
+				configClient.refreshNow();
+				if (announce)
+				{
+					chat("TRIGLAV: povezano" + (keyStore.linkedName() == null ? "." : " kot " + keyStore.linkedName() + "."));
+				}
+				break;
+			case WRONG_CODE:
+				chat("TRIGLAV: koda ne velja. Preveri jo na clan.kokalj.dev/profil (Pokaži mojo kodo).");
+				break;
+			case UNREACHABLE:
+				if (announce)
+				{
+					chat("TRIGLAV: stran trenutno ni dosegljiva, poskusi čez nekaj minut.");
+				}
+				break;
+			default:
+				break;
+		}
 	}
 
 	private void showFeedMessage(String text)

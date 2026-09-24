@@ -1,7 +1,6 @@
 package com.triglav.clan.net;
 
 import com.google.gson.JsonObject;
-import com.triglav.clan.TriglavConfig;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -34,7 +33,8 @@ public class ApiClient
 	private static final String DEFAULT_SITE_URL = "https://clan.kokalj.dev";
 
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-	private static final MediaType WEBP = MediaType.parse("image/webp");
+	// PNG, not WebP: the JDK has no WebP encoder; the site converts every upload to WebP itself.
+	private static final MediaType PNG = MediaType.parse("image/png");
 
 	/** Queue cap from docs/plugin-brief.md §6. */
 	private static final int MAX_QUEUE = 200;
@@ -43,14 +43,14 @@ public class ApiClient
 	private static final int DRAIN_INTERVAL_SECONDS = 5;
 
 	private final OkHttpClient httpClient;
-	private final TriglavConfig config;
+	private final KeyStore keyStore;
 	private final Deque<QueuedEvent> queue = new ArrayDeque<>();
 
 	@Inject
-	private ApiClient(OkHttpClient httpClient, TriglavConfig config, ScheduledExecutorService executor)
+	private ApiClient(OkHttpClient httpClient, KeyStore keyStore, ScheduledExecutorService executor)
 	{
 		this.httpClient = httpClient;
-		this.config = config;
+		this.keyStore = keyStore;
 		executor.scheduleWithFixedDelay(this::drain, DRAIN_INTERVAL_SECONDS, DRAIN_INTERVAL_SECONDS, TimeUnit.SECONDS);
 	}
 
@@ -60,10 +60,10 @@ public class ApiClient
 		return override == null || override.trim().isEmpty() ? DEFAULT_SITE_URL : override.trim();
 	}
 
-	/** @return true if a clan code is configured, i.e. pairing has been completed */
+	/** @return true once the clan code has been exchanged for an ingest key */
 	public boolean isPaired()
 	{
-		return !trimmedClanCode().isEmpty();
+		return keyStore.isLinked();
 	}
 
 	/**
@@ -121,13 +121,13 @@ public class ApiClient
 
 	private boolean deliver(QueuedEvent event)
 	{
-		final String clanCode = trimmedClanCode();
-		if (clanCode.isEmpty())
+		final String key = keyStore.ingestKey();
+		if (key == null)
 		{
 			return false;
 		}
 
-		final HttpUrl url = HttpUrl.parse(siteUrl() + "/api/dink/" + clanCode);
+		final HttpUrl url = HttpUrl.parse(siteUrl() + "/api/dink/" + key);
 		if (url == null)
 		{
 			log.warn("Invalid site URL, cannot deliver {}", event.type);
@@ -139,7 +139,7 @@ public class ApiClient
 			: new MultipartBody.Builder()
 				.setType(MultipartBody.FORM)
 				.addFormDataPart("payload_json", event.json.toString())
-				.addFormDataPart("file", "screenshot.webp", RequestBody.create(WEBP, event.screenshot))
+				.addFormDataPart("file", "screenshot.png", RequestBody.create(PNG, event.screenshot))
 				.build();
 
 		final Request request = new Request.Builder().url(url).post(body).build();
@@ -158,12 +158,6 @@ public class ApiClient
 			log.debug("Ingest unreachable for {}: {}", event.type, e.getMessage());
 			return false;
 		}
-	}
-
-	private String trimmedClanCode()
-	{
-		final String code = config.clanCode();
-		return code == null ? "" : code.trim();
 	}
 
 	private static final class QueuedEvent

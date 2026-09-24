@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.triglav.clan.TriglavConfig;
 import com.triglav.clan.net.ApiClient;
+import com.triglav.clan.net.KeyStore;
 import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -33,13 +34,15 @@ public class FeedClient
 
 	private final OkHttpClient httpClient;
 	private final TriglavConfig config;
+	private final KeyStore keyStore;
 	private final Set<String> seen = new LinkedHashSet<>();
 
 	@Inject
-	private FeedClient(OkHttpClient httpClient, TriglavConfig config, ScheduledExecutorService executor)
+	private FeedClient(OkHttpClient httpClient, TriglavConfig config, KeyStore keyStore, ScheduledExecutorService executor)
 	{
 		this.httpClient = httpClient;
 		this.config = config;
+		this.keyStore = keyStore;
 		executor.scheduleWithFixedDelay(this::poll, POLL_SECONDS, POLL_SECONDS, TimeUnit.SECONDS);
 	}
 
@@ -59,8 +62,8 @@ public class FeedClient
 			return;
 		}
 
-		final String clanCode = config.clanCode() == null ? "" : config.clanCode().trim();
-		if (clanCode.isEmpty())
+		final String clanCode = keyStore.ingestKey();
+		if (clanCode == null)
 		{
 			return;
 		}

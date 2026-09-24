@@ -2,8 +2,8 @@ package com.triglav.clan.collect;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.triglav.clan.TriglavConfig;
 import com.triglav.clan.net.ApiClient;
+import com.triglav.clan.net.KeyStore;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -40,15 +40,15 @@ public class ClanRankReporter
 	private final Client client;
 	private final ClientThread clientThread;
 	private final OkHttpClient httpClient;
-	private final TriglavConfig config;
+	private final KeyStore keyStore;
 
 	@Inject
-	private ClanRankReporter(Client client, ClientThread clientThread, OkHttpClient httpClient, TriglavConfig config, ScheduledExecutorService executor)
+	private ClanRankReporter(Client client, ClientThread clientThread, OkHttpClient httpClient, KeyStore keyStore, ScheduledExecutorService executor)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
 		this.httpClient = httpClient;
-		this.config = config;
+		this.keyStore = keyStore;
 		executor.scheduleWithFixedDelay(this::reportNow, INTERVAL_MINUTES, INTERVAL_MINUTES, TimeUnit.MINUTES);
 	}
 
@@ -87,8 +87,8 @@ public class ClanRankReporter
 
 	private void send(JsonArray members)
 	{
-		final String clanCode = config.clanCode() == null ? "" : config.clanCode().trim();
-		if (clanCode.isEmpty())
+		final String clanCode = keyStore.ingestKey();
+		if (clanCode == null)
 		{
 			return;
 		}

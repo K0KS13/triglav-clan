@@ -12,10 +12,9 @@ public interface TriglavConfig extends Config
 	@ConfigItem(
 		keyName = "clanCode",
 		name = "Klanska koda",
-		description = "Nastavi se sama, ko v pluginu klikneš Poveži račun in kodo vneseš na strani (/profil). "
-			+ "Lahko jo tudi ročno prilepiš s strani, če povezovanje s klikom ne deluje. To je tvoj osebni "
-			+ "skrivni ključ — kdor ga ima, lahko v tvojem imenu pošilja lažne dogodke na stran. Ne deli ga z "
-			+ "nikomer; če ga kdo vidi, ga na strani (/profil) razveljavi.",
+		description = "Tvoja koda TRG-XXXX s strani (clan.kokalj.dev/profil → Pokaži mojo kodo). Ista koda velja na "
+			+ "vseh tvojih računalnikih. Koda je kot geslo — kdor jo ima, lahko v tvojem imenu pošilja drope na stran. "
+			+ "Ne deli je in je ne kaži na streamu; če jo je kdo videl, jo na profilu zamenjaj.",
 		position = 0
 	)
 	default String clanCode()

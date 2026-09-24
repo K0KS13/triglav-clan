@@ -1,11 +1,12 @@
 # TRIGLAV Clan
 
-RuneLite plugin for the TRIGLAV OSRS clan ([clan.kokalj.dev](https://clan.kokalj.dev)). One pairing code links your
+RuneLite plugin for the TRIGLAV OSRS clan ([clan.kokalj.dev](https://clan.kokalj.dev)). One short code links your
 account to the clan site — no webhook URLs to copy, unlike Dink.
 
 ## What it does today
 
-- **Pairing** — click *Poveži račun* in the panel, enter the 6-character code on `/profil` on the site, done.
+- **Linking** — every member has a permanent code `TRG-XXXX` on their profile at clan.kokalj.dev. Type it into the
+  TRIGLAV side panel and click *Poveži*. The same code works on every computer you play on.
 - **LOGIN/LOGOUT** — sends your current skill levels and XP on login, so your site profile stays fresh.
 - **LOOT** — reports NPC drops (item, quantity, GE price, kill count parsed from the kill-count chat message),
   with a screenshot once the drop clears the site's configured threshold.
@@ -33,19 +34,19 @@ detail on each one — every choice below was checked against the actual `runeli
 
 ## Configuration
 
-Members only ever see: the clan code (filled in automatically by pairing), and four switches — send
-screenshots, show in-game notifications, send deaths, show the bingo board.
+Members only ever see: the clan code, and four switches — send screenshots, show in-game notifications, send
+deaths, show the bingo board. Everything else (screenshot threshold and so on) comes from the site: the plugin
+re-reads it on start, right after linking and every hour, so a change on the site needs no plugin update.
 
 ## Privacy
 
-- The **clan code** is a personal secret key, not a shareable ID — whoever has it can send fake events to the
-  site under your name. Never share it; if it leaks, revoke it on `/profil` (issues a new one instantly).
+- The **clan code** works like a password, not a shareable ID — whoever has it can send fake events to the
+  site under your name. Never share it or show it on stream; if it leaks, replace it on `/profil` (the old one
+  stops working instantly). The site rate-limits wrong codes and alerts staff when someone is guessing.
 - Only what's listed under "What it does today" is sent, to `clan.kokalj.dev` only — no private messages, no
   bank contents beyond what a loot/death event needs, no IP addresses.
 - **Screenshots**, when enabled, show your username, chat and whatever's in your inventory/equipment at that
   moment.
-- Pairing shows the site which account is asking to connect (`playerName`) before a member confirms it, so a
-  code from someone else's plugin can't silently bind to your account.
 
 ## For clan members
 

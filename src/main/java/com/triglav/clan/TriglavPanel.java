@@ -17,17 +17,23 @@ import javax.swing.SwingUtilities;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.LinkBrowser;
 
-/** Side panel: pairing status and the "Poveži račun" button from docs/plugin-brief.md §3. */
+/**
+ * Side panel: link status, the clan-code field with short instructions and a direct link to the
+ * member's profile (where the code is), the gear-setup button and a link to the site.
+ */
 @Singleton
 public class TriglavPanel extends PluginPanel
 {
-	private final JLabel statusValue = value();
-	private final JLabel codeValue = value();
-	private final JButton pairButton = new JButton("Poveži račun");
+	static final String SITE_URL = "https://clan.kokalj.dev";
+	static final String PROFILE_URL = SITE_URL + "/profil";
+
+	private final JLabel statusValue = new JLabel("ni povezano");
+	private final JTextField codeField = new JTextField();
 	private final JTextField gearTitle = new JTextField();
 
-	private Runnable onPair = () ->
+	private Consumer<String> onLink = code ->
 	{
 	};
 	private Consumer<String> onSendGear = title ->
@@ -48,21 +54,31 @@ public class TriglavPanel extends PluginPanel
 		content.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		content.add(header("TRIGLAV"));
-		content.add(row("Stanje", statusValue));
-		content.add(row("Koda", codeValue));
+		statusValue.setFont(FontManager.getRunescapeFont());
+		statusValue.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
+		statusValue.setAlignmentX(Component.LEFT_ALIGNMENT);
+		content.add(statusValue);
 
 		content.add(spacer());
-		pairButton.setFont(FontManager.getRunescapeSmallFont());
-		pairButton.setFocusPainted(false);
-		pairButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		pairButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		pairButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-		pairButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
-		pairButton.addActionListener(e -> onPair.run());
-		content.add(pairButton);
-
-		content.add(spacer());
-		content.add(note("Klikni zgoraj, nato kodo vpiši na clan.kokalj.dev/profil in potrdi."));
+		content.add(header("Poveži račun"));
+		content.add(note("1. Na strani odpri svoj profil in klikni <b>Pokaži mojo kodo</b>."));
+		content.add(Box.createVerticalStrut(4));
+		final JButton profileButton = button("Odpri moj profil na strani");
+		profileButton.addActionListener(e -> LinkBrowser.browse(PROFILE_URL));
+		content.add(profileButton);
+		content.add(Box.createVerticalStrut(6));
+		content.add(note("2. Kodo (TRG-XXXX) vpiši sem in klikni <b>Poveži</b>. Ista koda velja na vseh tvojih računalnikih."));
+		content.add(Box.createVerticalStrut(4));
+		codeField.setFont(FontManager.getRunescapeSmallFont());
+		codeField.setAlignmentX(Component.LEFT_ALIGNMENT);
+		codeField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		codeField.setToolTipText("TRG-XXXX");
+		codeField.addActionListener(e -> onLink.accept(codeField.getText().trim()));
+		content.add(codeField);
+		content.add(Box.createVerticalStrut(4));
+		final JButton linkButton = button("Poveži");
+		linkButton.addActionListener(e -> onLink.accept(codeField.getText().trim()));
+		content.add(linkButton);
 
 		content.add(spacer());
 		content.add(header("Gear setup"));
@@ -78,12 +94,17 @@ public class TriglavPanel extends PluginPanel
 		content.add(Box.createVerticalStrut(4));
 		content.add(note("Pošlje opremo in inventar, ki ju imaš zdaj, v gear builder na strani."));
 
+		content.add(spacer());
+		final JButton siteButton = button("Odpri clan.kokalj.dev");
+		siteButton.addActionListener(e -> LinkBrowser.browse(SITE_URL));
+		content.add(siteButton);
+
 		add(content, BorderLayout.NORTH);
 	}
 
-	public void setOnPair(Runnable onPair)
+	public void setOnLink(Consumer<String> onLink)
 	{
-		this.onPair = onPair;
+		this.onLink = onLink;
 	}
 
 	public void setOnSendGear(Consumer<String> onSendGear)
@@ -91,11 +112,38 @@ public class TriglavPanel extends PluginPanel
 		this.onSendGear = onSendGear;
 	}
 
-	private static JLabel note(String text)
+	/** @param name Discord name the code belongs to, or null if unknown this session */
+	public void showLinked(boolean linked, String name)
 	{
-		final JLabel label = new JLabel("<html><body style='width:150px'>" + text + "</body></html>");
+		SwingUtilities.invokeLater(() ->
+		{
+			if (!linked)
+			{
+				statusValue.setText("ni povezano");
+				statusValue.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
+				return;
+			}
+			statusValue.setText(name == null ? "povezano" : "povezano: " + name);
+			statusValue.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
+			codeField.setText("");
+		});
+	}
+
+	private static JLabel header(String text)
+	{
+		final JLabel label = new JLabel(text);
+		label.setFont(FontManager.getRunescapeBoldFont());
+		label.setForeground(ColorScheme.BRAND_ORANGE);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+		return label;
+	}
+
+	private static JLabel note(String html)
+	{
+		final JLabel label = new JLabel("<html><body style='width:150px'>" + html + "</body></html>");
 		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
 	}
@@ -112,60 +160,11 @@ public class TriglavPanel extends PluginPanel
 		return button;
 	}
 
-	public void update(boolean paired)
-	{
-		SwingUtilities.invokeLater(() ->
-		{
-			statusValue.setText(paired ? "povezano" : "ni povezano");
-			pairButton.setEnabled(!paired);
-		});
-	}
-
-	public void showPairingCode(String code)
-	{
-		SwingUtilities.invokeLater(() -> codeValue.setText(code));
-	}
-
-	private static JLabel header(String text)
-	{
-		final JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeBoldFont());
-		label.setForeground(ColorScheme.BRAND_ORANGE);
-		label.setAlignmentX(Component.LEFT_ALIGNMENT);
-		label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
-		return label;
-	}
-
-	private static JLabel value()
-	{
-		final JLabel label = new JLabel("-");
-		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		return label;
-	}
-
-	private JPanel row(String key, JLabel value)
-	{
-		final JPanel panel = new JPanel(new BorderLayout());
-		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-		panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-
-		final JLabel keyLabel = new JLabel(key);
-		keyLabel.setFont(FontManager.getRunescapeSmallFont());
-		keyLabel.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
-
-		panel.add(keyLabel, BorderLayout.WEST);
-		panel.add(value, BorderLayout.EAST);
-		return panel;
-	}
-
 	private static Component spacer()
 	{
 		final JPanel panel = new JPanel();
 		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 10));
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 12));
 		panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return panel;
 	}
