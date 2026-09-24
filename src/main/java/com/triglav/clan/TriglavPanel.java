@@ -3,13 +3,16 @@ package com.triglav.clan;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -22,8 +25,12 @@ public class TriglavPanel extends PluginPanel
 	private final JLabel statusValue = value();
 	private final JLabel codeValue = value();
 	private final JButton pairButton = new JButton("Poveži račun");
+	private final JTextField gearTitle = new JTextField();
 
 	private Runnable onPair = () ->
+	{
+	};
+	private Consumer<String> onSendGear = title ->
 	{
 	};
 
@@ -55,12 +62,21 @@ public class TriglavPanel extends PluginPanel
 		content.add(pairButton);
 
 		content.add(spacer());
-		final JLabel hint = new JLabel(
-			"<html><body style='width:150px'>Ali na strani /profil prilepi kodo, ki jo dobiš s klikom zgoraj.</body></html>");
-		hint.setFont(FontManager.getRunescapeSmallFont());
-		hint.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
-		hint.setAlignmentX(Component.LEFT_ALIGNMENT);
-		content.add(hint);
+		content.add(note("Klikni zgoraj, nato kodo vpiši na clan.kokalj.dev/profil in potrdi."));
+
+		content.add(spacer());
+		content.add(header("Gear setup"));
+		gearTitle.setFont(FontManager.getRunescapeSmallFont());
+		gearTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+		gearTitle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		gearTitle.setToolTipText("Ime setupa na strani (neobvezno)");
+		content.add(gearTitle);
+		content.add(Box.createVerticalStrut(4));
+		final JButton gearButton = button("Pošlji trenutni setup na stran");
+		gearButton.addActionListener(e -> onSendGear.accept(gearTitle.getText().trim()));
+		content.add(gearButton);
+		content.add(Box.createVerticalStrut(4));
+		content.add(note("Pošlje opremo in inventar, ki ju imaš zdaj, v gear builder na strani."));
 
 		add(content, BorderLayout.NORTH);
 	}
@@ -68,6 +84,32 @@ public class TriglavPanel extends PluginPanel
 	public void setOnPair(Runnable onPair)
 	{
 		this.onPair = onPair;
+	}
+
+	public void setOnSendGear(Consumer<String> onSendGear)
+	{
+		this.onSendGear = onSendGear;
+	}
+
+	private static JLabel note(String text)
+	{
+		final JLabel label = new JLabel("<html><body style='width:150px'>" + text + "</body></html>");
+		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
+	}
+
+	private static JButton button(String text)
+	{
+		final JButton button = new JButton(text);
+		button.setFont(FontManager.getRunescapeSmallFont());
+		button.setFocusPainted(false);
+		button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		button.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		button.setAlignmentX(Component.LEFT_ALIGNMENT);
+		button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		return button;
 	}
 
 	public void update(boolean paired)

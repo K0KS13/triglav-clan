@@ -1,7 +1,11 @@
 package com.triglav.clan;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.inject.Provides;
+import com.triglav.clan.bingo.BingoBoard;
+import com.triglav.clan.bingo.BingoClient;
+import com.triglav.clan.bingo.BingoOverlay;
 import com.triglav.clan.collect.ClanRankReporter;
 import com.triglav.clan.collect.CollectionLogChat;
 import com.triglav.clan.collect.DeathTracker;
@@ -14,6 +18,7 @@ import com.triglav.clan.collect.Screenshot;
 import com.triglav.clan.collect.SkillSnapshot;
 import com.triglav.clan.collect.SlayerSnapshot;
 import com.triglav.clan.feed.FeedClient;
+import com.triglav.clan.gear.GearClient;
 import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.ConfigClient;
 import com.triglav.clan.net.Envelope;
@@ -43,6 +48,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 
 @Slf4j
@@ -101,6 +107,18 @@ public class TriglavPlugin extends Plugin
 	@Inject
 	private DeathTracker deathTracker;
 
+	@Inject
+	private BingoClient bingoClient;
+
+	@Inject
+	private BingoOverlay bingoOverlay;
+
+	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
+	private GearClient gearClient;
+
 	private static final int SCREENSHOT_TIMEOUT_SECONDS = 2;
 
 	private NavigationButton navButton;
@@ -121,7 +139,9 @@ public class TriglavPlugin extends Plugin
 
 		panel.update(apiClient.isPaired());
 		panel.setOnPair(this::startPairing);
+		panel.setOnSendGear(title -> gearClient.sendCurrentSetup(title, result -> chat("TRIGLAV: " + result)));
 		feedClient.setSink(this::showFeedMessage);
+		overlayManager.add(bingoOverlay);
 		lastGameState = null;
 	}
 
@@ -129,6 +149,7 @@ public class TriglavPlugin extends Plugin
 	protected void shutDown()
 	{
 		pairingClient.cancel();
+		overlayManager.remove(bingoOverlay);
 		clientToolbar.removeNavigation(navButton);
 	}
 
@@ -182,6 +203,19 @@ public class TriglavPlugin extends Plugin
 
 		final JsonObject extra = lootCollector.build(client, event);
 		final JsonObject envelope = Envelope.create(client, "LOOT", extra);
+
+		final BingoBoard board = bingoClient.board();
+		if (board != null)
+		{
+			for (JsonElement item : extra.getAsJsonArray("items"))
+			{
+				if (board.hasOpenTileFor(item.getAsJsonObject().get("id").getAsInt()))
+				{
+					bingoClient.refreshSoon();
+					break;
+				}
+			}
+		}
 
 		if (!config.sendScreenshots() || LootValue.total(extra.getAsJsonArray("items")) < configClient.current().screenshotMinValue)
 		{
@@ -244,7 +278,11 @@ public class TriglavPlugin extends Plugin
 	private void startPairing()
 	{
 		pairingClient.start(
-			code -> panel.showPairingCode(code),
+			code ->
+			{
+				panel.showPairingCode(code);
+				chat("TRIGLAV: tvoja koda je " + code + " — vpiši jo na clan.kokalj.dev/profil (velja 10 min).");
+			},
 			ok ->
 			{
 				panel.update(ok && apiClient.isPaired());

@@ -18,6 +18,10 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
 - **Collection log** — a `COLLECTION` event the moment a new item unlocks.
 - **Pets** — a `PET` event when a pet is unlocked (name read off the NPC that spawns next to you).
 - **Deaths** — an approximate GP value lost, from the equipment+inventory value just before and just after death.
+- **Bingo board** — during an active clan bingo, your team's board as an in-game overlay (green = approved,
+  yellow = waiting for staff). It refreshes shortly after a drop that matches an open tile. Move it with Alt+drag.
+- **Gear setup** — *Pošlji trenutni setup na stran* in the panel sends your worn equipment, inventory and
+  spellbook to the site's gear builder and prints the link in chat.
 
 ## Not implemented yet
 
@@ -29,8 +33,8 @@ detail on each one — every choice below was checked against the actual `runeli
 
 ## Configuration
 
-Members only ever see: the clan code (filled in automatically by pairing), and three switches — send
-screenshots, show in-game notifications, send deaths.
+Members only ever see: the clan code (filled in automatically by pairing), and four switches — send
+screenshots, show in-game notifications, send deaths, show the bingo board.
 
 ## Privacy
 

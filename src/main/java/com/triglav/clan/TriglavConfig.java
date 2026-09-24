@@ -56,4 +56,15 @@ public interface TriglavConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "bingoOverlay",
+		name = "Bingo tabla v igri",
+		description = "Med aktivnim klanskim bingom pokaži tablo tvoje ekipe (zeleno potrjeno, rumeno čaka na pregled). Premakneš jo z Alt+vleci.",
+		position = 4
+	)
+	default boolean bingoOverlay()
+	{
+		return true;
+	}
 }
