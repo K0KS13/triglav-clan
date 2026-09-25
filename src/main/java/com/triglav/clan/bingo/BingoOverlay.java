@@ -108,7 +108,7 @@ public class BingoOverlay extends Overlay
 
 		if (hovered != null)
 		{
-			tooltipManager.add(new Tooltip(GameText.ascii(hovered.title) + "</br>" + hovered.points + " t - " + statusLabel(hovered.status)));
+			tooltipManager.add(new Tooltip(GameText.ascii(hovered.title) + "</br>" + hovered.points + " bingo točk za ekipo - " + statusLabel(hovered.status)));
 		}
 
 		return new Dimension(width, height);
