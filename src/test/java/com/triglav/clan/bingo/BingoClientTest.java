@@ -46,6 +46,17 @@ public class BingoClientTest
 		assertEquals(BingoBoard.Status.PENDING, board.tiles.get(1).status);
 		assertEquals(-1, board.tiles.get(1).iconItemId);
 		assertEquals(BingoBoard.Status.OPEN, board.tiles.get(2).status);
+		assertEquals(3, board.tiles.get(1).points);
+		assertEquals(11832, board.tiles.get(0).displayItemId());
+		assertEquals(-1, board.tiles.get(1).displayItemId());
+	}
+
+	@Test
+	public void initialsForTilesWithoutItems()
+	{
+		assertEquals("BP", BingoOverlay.initials("Boss pet"));
+		assertEquals("HC", BingoOverlay.initials("Hard clue unique"));
+		assertEquals("PE", BingoOverlay.initials("Pet"));
 	}
 
 	@Test

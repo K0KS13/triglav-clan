@@ -116,6 +116,7 @@ public class BingoClient
 			tiles.add(new BingoBoard.Tile(
 				t.get("index").getAsInt(),
 				t.has("title") ? t.get("title").getAsString() : "",
+				t.has("points") && !t.get("points").isJsonNull() ? t.get("points").getAsInt() : 0,
 				t.has("iconItemId") && !t.get("iconItemId").isJsonNull() ? t.get("iconItemId").getAsInt() : -1,
 				itemIds,
 				status(t.has("status") ? t.get("status").getAsString() : "open")));

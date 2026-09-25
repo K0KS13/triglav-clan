@@ -6,17 +6,23 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
+import net.runelite.api.Client;
+import net.runelite.api.Point;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 
 /**
  * The team's bingo board in game (docs/plugin-brief.md §5.3): one square per tile with the
  * tile's item icon, green once the site has approved it, yellow while a proof waits for staff.
- * Movable like any overlay (Alt+drag).
+ * A tile without any item shows the initials of its title. Hovering a tile shows its title,
+ * points and state. Movable like any overlay (Alt+drag).
  */
 public class BingoOverlay extends Overlay
 {
@@ -30,13 +36,17 @@ public class BingoOverlay extends Overlay
 	private final BingoClient bingoClient;
 	private final ItemManager itemManager;
 	private final TriglavConfig config;
+	private final Client client;
+	private final TooltipManager tooltipManager;
 
 	@Inject
-	private BingoOverlay(BingoClient bingoClient, ItemManager itemManager, TriglavConfig config)
+	private BingoOverlay(BingoClient bingoClient, ItemManager itemManager, TriglavConfig config, Client client, TooltipManager tooltipManager)
 	{
 		this.bingoClient = bingoClient;
 		this.itemManager = itemManager;
 		this.config = config;
+		this.client = client;
+		this.tooltipManager = tooltipManager;
 		setPosition(OverlayPosition.TOP_LEFT);
 	}
 
@@ -58,6 +68,10 @@ public class BingoOverlay extends Overlay
 		g.setColor(board.teamColor);
 		g.drawString(header, 0, metrics.getAscent());
 
+		final Point mouse = client.getMouseCanvasPosition();
+		final Rectangle bounds = getBounds();
+		BingoBoard.Tile hovered = null;
+
 		for (BingoBoard.Tile tile : board.tiles)
 		{
 			final int row = tile.index / board.cols;
@@ -73,16 +87,55 @@ public class BingoOverlay extends Overlay
 			g.setColor(tile.status == BingoBoard.Status.DONE ? DONE : tile.status == BingoBoard.Status.PENDING ? PENDING : OPEN);
 			g.fillRect(x, y, TILE, TILE);
 
-			if (tile.iconItemId > 0)
+			final int itemId = tile.displayItemId();
+			final BufferedImage icon = itemId > 0 ? itemManager.getImage(itemId) : null;
+			if (icon != null)
 			{
-				final BufferedImage icon = itemManager.getImage(tile.iconItemId);
-				if (icon != null)
-				{
-					g.drawImage(icon, x + (TILE - 24) / 2, y + (TILE - 22) / 2, 24, 22, null);
-				}
+				g.drawImage(icon, x + (TILE - 24) / 2, y + (TILE - 22) / 2, 24, 22, null);
+			}
+			else
+			{
+				final String initials = initials(tile.title);
+				g.setColor(Color.WHITE);
+				g.drawString(initials, x + (TILE - metrics.stringWidth(initials)) / 2, y + (TILE + metrics.getAscent()) / 2 - 1);
+			}
+
+			if (mouse != null && bounds != null && new Rectangle(bounds.x + x, bounds.y + y, TILE, TILE).contains(mouse.getX(), mouse.getY()))
+			{
+				hovered = tile;
 			}
 		}
 
+		if (hovered != null)
+		{
+			tooltipManager.add(new Tooltip(GameText.ascii(hovered.title) + "</br>" + hovered.points + " t - " + statusLabel(hovered.status)));
+		}
+
 		return new Dimension(width, height);
+	}
+
+	/** "Boss pet" -> "BP", "Hard clue unique" -> "HC", "Pet" -> "PE" */
+	static String initials(String title)
+	{
+		final String[] words = GameText.ascii(title).trim().split("\\s+");
+		if (words.length >= 2)
+		{
+			return (words[0].substring(0, 1) + words[1].substring(0, 1)).toUpperCase();
+		}
+		final String word = words[0];
+		return word.isEmpty() ? "?" : word.substring(0, Math.min(2, word.length())).toUpperCase();
+	}
+
+	private static String statusLabel(BingoBoard.Status status)
+	{
+		switch (status)
+		{
+			case DONE:
+				return "potrjeno";
+			case PENDING:
+				return "caka na pregled";
+			default:
+				return "odprto";
+		}
 	}
 }

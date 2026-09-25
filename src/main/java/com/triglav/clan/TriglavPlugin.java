@@ -36,7 +36,9 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.ActorDeath;
+import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClanChannelChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcSpawned;
@@ -128,6 +130,8 @@ public class TriglavPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private GameState lastGameState;
+	private volatile boolean loginPending;
+	private String lastPlayerName;
 
 	@Override
 	protected void startUp()
@@ -147,7 +151,9 @@ public class TriglavPlugin extends Plugin
 		panel.setOnSendGear(title -> gearClient.sendCurrentSetup(title, result -> chat("TRIGLAV: " + result)));
 		feedClient.setSink(this::showFeedMessage);
 		overlayManager.add(bingoOverlay);
-		lastGameState = null;
+		// Enabled while already in game: send the login snapshot on the next tick.
+		lastGameState = client.getGameState();
+		loginPending = lastGameState == GameState.LOGGED_IN;
 
 		// Re-check the stored code on every start: picks up a code changed on the site ("zamenjaj kodo").
 		keyStore.refresh(result -> onLinkResult(result, false));
@@ -173,8 +179,8 @@ public class TriglavPlugin extends Plugin
 
 		if (state == GameState.LOGGED_IN && lastGameState != GameState.LOGGED_IN)
 		{
-			sendLogin();
-			clanRankReporter.reportNow();
+			// The local player (and its name) isn't loaded yet on this event; onGameTick sends it.
+			loginPending = true;
 		}
 		else if (lastGameState == GameState.LOGGED_IN
 			&& (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING || state == GameState.CONNECTION_LOST))
@@ -257,6 +263,18 @@ public class TriglavPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		final String name = Envelope.playerName(client);
+		if (name != null)
+		{
+			lastPlayerName = name;
+			if (loginPending)
+			{
+				loginPending = false;
+				sendLogin();
+				clanRankReporter.reportNow();
+			}
+		}
+
 		petDetector.onGameTick();
 
 		final JsonObject deathExtra = deathTracker.onGameTick(client);
@@ -278,8 +296,19 @@ public class TriglavPlugin extends Plugin
 
 	private void sendLogout()
 	{
-		apiClient.send(Envelope.create(client, "LOGOUT", new JsonObject()), null);
+		// The player is already gone at this point, so use the name seen while logged in.
+		apiClient.send(Envelope.create(client, "LOGOUT", new JsonObject(), lastPlayerName), null);
 		log.debug("TRIGLAV: sent LOGOUT");
+	}
+
+	/** The clan channel loads a few seconds after login; report the ranks once it's actually there. */
+	@Subscribe
+	public void onClanChannelChanged(ClanChannelChanged event)
+	{
+		if (!event.isGuest() && event.getClanId() == ClanID.CLAN && event.getClanChannel() != null)
+		{
+			clanRankReporter.reportNow();
+		}
 	}
 
 	@Subscribe
@@ -319,6 +348,11 @@ public class TriglavPlugin extends Plugin
 		{
 			case LINKED:
 				configClient.refreshNow();
+				if (announce && client.getGameState() == GameState.LOGGED_IN)
+				{
+					// Linked mid-session: the login snapshot went nowhere without a key, so send it now.
+					loginPending = true;
+				}
 				if (announce)
 				{
 					chat("TRIGLAV: povezano" + (keyStore.linkedName() == null ? "." : " kot " + keyStore.linkedName() + "."));

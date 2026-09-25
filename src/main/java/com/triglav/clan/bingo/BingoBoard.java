@@ -15,17 +15,29 @@ public final class BingoBoard
 	{
 		public final int index;
 		public final String title;
+		public final int points;
 		public final int iconItemId;
 		public final int[] itemIds;
 		public final Status status;
 
-		public Tile(int index, String title, int iconItemId, int[] itemIds, Status status)
+		public Tile(int index, String title, int points, int iconItemId, int[] itemIds, Status status)
 		{
 			this.index = index;
 			this.title = title;
+			this.points = points;
 			this.iconItemId = iconItemId;
 			this.itemIds = itemIds;
 			this.status = status;
+		}
+
+		/** @return the tile's icon, else its first item, else -1 (the overlay then shows initials) */
+		public int displayItemId()
+		{
+			if (iconItemId > 0)
+			{
+				return iconItemId;
+			}
+			return itemIds.length > 0 ? itemIds[0] : -1;
 		}
 	}
 

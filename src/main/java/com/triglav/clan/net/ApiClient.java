@@ -78,6 +78,12 @@ public class ApiClient
 			return;
 		}
 
+		if (!envelope.has("playerName") || envelope.get("playerName").getAsString().isEmpty())
+		{
+			log.debug("Not sending {} without a player name", envelope.has("type") ? envelope.get("type").getAsString() : "?");
+			return;
+		}
+
 		if (queue.size() >= MAX_QUEUE)
 		{
 			final QueuedEvent dropped = queue.pollFirst();
@@ -150,8 +156,12 @@ public class ApiClient
 			{
 				return true;
 			}
-			log.warn("Ingest rejected {} with HTTP {}", event.type, response.code());
-			return false;
+
+			final String reason = response.body() == null ? "" : response.body().string();
+			log.warn("Ingest rejected {} with HTTP {}: {}", event.type, response.code(),
+				reason.length() > 300 ? reason.substring(0, 300) : reason);
+			// A 4xx other than 429 means this event itself is invalid; retrying it can't help.
+			return response.code() >= 400 && response.code() < 500 && response.code() != 429;
 		}
 		catch (IOException e)
 		{

@@ -11,8 +11,8 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.clan.ClanChannel;
-import net.runelite.api.clan.ClanChannelMember;
+import net.runelite.api.clan.ClanMember;
+import net.runelite.api.clan.ClanTitle;
 import net.runelite.api.clan.ClanID;
 import net.runelite.api.clan.ClanSettings;
 import net.runelite.client.callback.ClientThread;
@@ -61,24 +61,37 @@ public class ClanRankReporter
 			{
 				send(members);
 			}
+			else
+			{
+				log.debug("Clan rank report skipped: clan channel not loaded or empty");
+			}
 		});
 	}
 
+	/**
+	 * The full roster comes from the clan settings; the clan channel only lists members who are
+	 * online right now (the first live test reported 11 of the clan's ~50).
+	 */
 	private JsonArray readMembers()
 	{
-		final ClanChannel channel = client.getClanChannel(ClanID.CLAN);
 		final ClanSettings settings = client.getClanSettings(ClanID.CLAN);
-		if (channel == null || settings == null)
+		if (settings == null)
 		{
 			return null;
 		}
 
 		final JsonArray members = new JsonArray();
-		for (ClanChannelMember member : channel.getMembers())
+		for (ClanMember member : settings.getMembers())
 		{
+			final ClanTitle title = member.getRank() == null ? null : settings.titleForRank(member.getRank());
+			if (member.getName() == null || title == null)
+			{
+				continue;
+			}
+
 			final JsonObject json = new JsonObject();
 			json.addProperty("rsn", member.getName());
-			json.addProperty("rank", settings.titleForRank(member.getRank()).getName());
+			json.addProperty("rank", title.getName());
 			json.addProperty("rankIndex", member.getRank().getRank());
 			members.add(json);
 		}
@@ -115,6 +128,14 @@ public class ClanRankReporter
 			@Override
 			public void onResponse(Call call, Response response)
 			{
+				if (!response.isSuccessful())
+				{
+					log.warn("Clan rank report rejected with HTTP {}", response.code());
+				}
+				else
+				{
+					log.debug("Clan rank report sent: {} members", members.size());
+				}
 				response.close();
 			}
 		});
