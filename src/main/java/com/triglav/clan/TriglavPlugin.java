@@ -7,13 +7,19 @@ import com.triglav.clan.bingo.BingoBoard;
 import com.triglav.clan.bingo.BingoClient;
 import com.triglav.clan.bingo.BingoOverlay;
 import com.triglav.clan.collect.ClanRankReporter;
+import com.triglav.clan.collect.ClueChat;
 import com.triglav.clan.collect.CollectionLogChat;
+import com.triglav.clan.collect.CombatTaskTracker;
 import com.triglav.clan.collect.DeathTracker;
 import com.triglav.clan.collect.DiarySnapshot;
 import com.triglav.clan.collect.KillCountTracker;
+import com.triglav.clan.collect.LevelTracker;
 import com.triglav.clan.collect.LootCollector;
 import com.triglav.clan.collect.LootValue;
 import com.triglav.clan.collect.PetDetector;
+import com.triglav.clan.collect.PlayerKillTracker;
+import com.triglav.clan.collect.QuestTracker;
+import com.triglav.clan.collect.SlayerChat;
 import com.triglav.clan.collect.Screenshot;
 import com.triglav.clan.collect.SkillSnapshot;
 import com.triglav.clan.collect.SlayerSnapshot;
@@ -26,6 +32,7 @@ import com.triglav.clan.net.KeyStore;
 import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,19 +48,25 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClanChannelChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.WidgetLoaded;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.Text;
+import net.runelite.http.api.loottracker.LootRecordType;
 
 @Slf4j
 @PluginDescriptor(
@@ -113,6 +126,21 @@ public class TriglavPlugin extends Plugin
 
 	@Inject
 	private DeathTracker deathTracker;
+
+	@Inject
+	private LevelTracker levelTracker;
+
+	@Inject
+	private CombatTaskTracker combatTaskTracker;
+
+	@Inject
+	private SlayerChat slayerChat;
+
+	@Inject
+	private QuestTracker questTracker;
+
+	@Inject
+	private PlayerKillTracker playerKillTracker;
 
 	@Inject
 	private BingoClient bingoClient;
@@ -194,6 +222,15 @@ public class TriglavPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		// Only the game's own messages: a player could otherwise type "Your Zulrah kill count is:
+		// 1000" in public chat and have it reported as theirs.
+		final ChatMessageType type = event.getType();
+		if (type != ChatMessageType.GAMEMESSAGE && type != ChatMessageType.SPAM
+			&& type != ChatMessageType.FRIENDSCHATNOTIFICATION)
+		{
+			return;
+		}
+
 		killCountTracker.onChatMessage(event);
 		petDetector.onChatMessage(event);
 
@@ -204,17 +241,89 @@ public class TriglavPlugin extends Plugin
 			extra.addProperty("itemName", clogItem);
 			apiClient.send(Envelope.create(client, "COLLECTION", extra), null);
 		}
+
+		final JsonObject clue = ClueChat.parse(event);
+		if (clue != null)
+		{
+			apiClient.send(Envelope.create(client, "CLUE", clue), null);
+		}
+
+		final JsonObject slayer = slayerChat.parse(event);
+		if (slayer != null)
+		{
+			apiClient.send(Envelope.create(client, "SLAYER", slayer), null);
+		}
+
+		// The combat achievement point varbits are only updated a tick after the message.
+		final String message = Text.removeTags(event.getMessage());
+		if (message.startsWith("Congratulations, you've completed a"))
+		{
+			clientThread.invokeLater(() ->
+			{
+				final JsonObject task = combatTaskTracker.parse(client, message);
+				if (task != null)
+				{
+					apiClient.send(Envelope.create(client, "COMBAT_ACHIEVEMENT", task), null);
+				}
+			});
+		}
+	}
+
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		levelTracker.onStatChanged(event);
+	}
+
+	@Subscribe
+	public void onHitsplatApplied(HitsplatApplied event)
+	{
+		playerKillTracker.onHitsplat(client, event);
+	}
+
+	/** The quest completion scroll; its counts land one tick later, hence the invokeLater. */
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded event)
+	{
+		if (event.getGroupId() != QuestTracker.WIDGET_GROUP)
+		{
+			return;
+		}
+
+		final String title = questTracker.title(client);
+		clientThread.invokeLater(() ->
+			apiClient.send(Envelope.create(client, "QUEST", questTracker.build(client, title)), null));
 	}
 
 	@Subscribe
 	public void onNpcLootReceived(NpcLootReceived event)
+	{
+		sendLoot(lootCollector.build(event));
+	}
+
+	/**
+	 * Loot that is not an NPC drop: raid chests, clue caskets, implings, pickpocketing. NPC loot
+	 * also fires this event, but it is already handled above (with the kill count attached), and a
+	 * killed player is reported as a PK rather than as loot.
+	 */
+	@Subscribe
+	public void onLootReceived(LootReceived event)
+	{
+		if (event.getType() == LootRecordType.NPC || event.getType() == LootRecordType.PLAYER)
+		{
+			return;
+		}
+
+		sendLoot(lootCollector.build(event.getName(), event.getType().name(), event.getItems()));
+	}
+
+	private void sendLoot(JsonObject extra)
 	{
 		if (client.getGameState() != GameState.LOGGED_IN)
 		{
 			return;
 		}
 
-		final JsonObject extra = lootCollector.build(client, event);
 		final JsonObject envelope = Envelope.create(client, "LOOT", extra);
 
 		final BingoBoard board = bingoClient.board();
@@ -282,10 +391,34 @@ public class TriglavPlugin extends Plugin
 		{
 			apiClient.send(Envelope.create(client, "DEATH", deathExtra), null);
 		}
+
+		final JsonObject levelExtra = levelTracker.onGameTick(client);
+		if (levelExtra != null)
+		{
+			apiClient.send(Envelope.create(client, "LEVEL", levelExtra), null);
+		}
+
+		final JsonObject killCountExtra = killCountTracker.onGameTick();
+		if (killCountExtra != null)
+		{
+			apiClient.send(Envelope.create(client, "KILL_COUNT", killCountExtra), null);
+		}
+
+		final List<JsonObject> kills = playerKillTracker.onGameTick(client);
+		if (kills != null)
+		{
+			for (JsonObject kill : kills)
+			{
+				apiClient.send(Envelope.create(client, "PLAYER_KILL", kill), null);
+			}
+		}
 	}
 
 	private void sendLogin()
 	{
+		// The level-up tracker needs a baseline: StatChanged fires for every skill right after login.
+		levelTracker.prime(client);
+
 		final JsonObject extra = new JsonObject();
 		extra.add("skills", SkillSnapshot.build(client));
 		extra.add("slayer", SlayerSnapshot.build(client));
@@ -299,6 +432,12 @@ public class TriglavPlugin extends Plugin
 		// The player is already gone at this point, so use the name seen while logged in.
 		apiClient.send(Envelope.create(client, "LOGOUT", new JsonObject(), lastPlayerName), null);
 		log.debug("TRIGLAV: sent LOGOUT");
+
+		// Half-finished state must not carry over to the next character or world.
+		levelTracker.reset();
+		killCountTracker.reset();
+		slayerChat.reset();
+		playerKillTracker.reset();
 	}
 
 	/** The clan channel loads a few seconds after login; report the ranks once it's actually there. */

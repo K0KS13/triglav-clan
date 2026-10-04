@@ -2,9 +2,9 @@ package com.triglav.clan.collect;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.util.Collection;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import net.runelite.api.Client;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
@@ -27,12 +27,28 @@ public class LootCollector
 		this.killCountTracker = killCountTracker;
 	}
 
-	public JsonObject build(Client client, NpcLootReceived event)
+	public JsonObject build(NpcLootReceived event)
 	{
 		final String npcName = event.getNpc().getName() == null ? "Unknown" : event.getNpc().getName();
+		final JsonObject extra = build(npcName, "NPC", event.getItems());
 
+		final int killCount = killCountTracker.lastCount(npcName);
+		if (killCount >= 0)
+		{
+			extra.addProperty("killCount", killCount);
+		}
+
+		return extra;
+	}
+
+	/**
+	 * Loot that isn't a plain NPC drop: raid chests, clue caskets, implings, pickpocketing.
+	 * The site shows these in the drop feed exactly like NPC loot, with `category` telling them apart.
+	 */
+	public JsonObject build(String source, String category, Collection<ItemStack> stacks)
+	{
 		final JsonArray items = new JsonArray();
-		for (ItemStack stack : event.getItems())
+		for (ItemStack stack : stacks)
 		{
 			final int canonicalId = itemManager.canonicalize(stack.getId());
 			final JsonObject item = new JsonObject();
@@ -45,15 +61,8 @@ public class LootCollector
 
 		final JsonObject extra = new JsonObject();
 		extra.add("items", items);
-		extra.addProperty("source", npcName);
-		extra.addProperty("category", "NPC");
-
-		final int killCount = killCountTracker.lastCount(npcName);
-		if (killCount >= 0)
-		{
-			extra.addProperty("killCount", killCount);
-		}
-
+		extra.addProperty("source", source == null || source.isEmpty() ? "Unknown" : source);
+		extra.addProperty("category", category);
 		return extra;
 	}
 }
