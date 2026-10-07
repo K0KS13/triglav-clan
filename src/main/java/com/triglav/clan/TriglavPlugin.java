@@ -35,6 +35,7 @@ import com.triglav.clan.net.KeyStore;
 import com.triglav.clan.overview.OverviewClient;
 import com.triglav.clan.remind.LfgReminder;
 import com.triglav.clan.remind.LocationOverlay;
+import com.triglav.clan.share.LocationSharer;
 import com.triglav.clan.share.ShareClient;
 import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
@@ -177,6 +178,9 @@ public class TriglavPlugin extends Plugin
 	private LfgClient lfgClient;
 
 	@Inject
+	private LocationSharer locationSharer;
+
+	@Inject
 	private LfgReminder lfgReminder;
 
 	@Inject
@@ -236,6 +240,7 @@ public class TriglavPlugin extends Plugin
 	protected void shutDown()
 	{
 		lfgReminder.shutDown();
+		locationSharer.clear();
 		if (autoGearTask != null)
 		{
 			autoGearTask.cancel(false);
@@ -471,6 +476,7 @@ public class TriglavPlugin extends Plugin
 
 		petDetector.onGameTick();
 		lfgReminder.onGameTick(this, message -> chat("TRIGLAV: " + message));
+		locationSharer.onGameTick();
 
 		final JsonObject deathExtra = deathTracker.onGameTick(client);
 		if (deathExtra != null && config.sendDeaths())
@@ -534,6 +540,7 @@ public class TriglavPlugin extends Plugin
 		// Half-finished state must not carry over to the next character or world.
 		levelTracker.reset();
 		xpMilestoneTracker.reset();
+		locationSharer.clear();
 		killCountTracker.reset();
 		slayerChat.reset();
 		playerKillTracker.reset();
@@ -555,6 +562,18 @@ public class TriglavPlugin extends Plugin
 		if (TriglavConfig.GROUP.equals(event.getGroup()) && "clanCode".equals(event.getKey()))
 		{
 			keyStore.refresh(result -> onLinkResult(result, true));
+		}
+
+		if (TriglavConfig.GROUP.equals(event.getGroup()) && "shareLocation".equals(event.getKey()))
+		{
+			if (config.shareLocation())
+			{
+				chat("TRIGLAV: lokacija se deli s clani klana (zemljevid v zivo). Izklopis jo v nastavitvah plugina; v Wildernessu in raidih se ne posilja.");
+			}
+			else
+			{
+				locationSharer.clear();
+			}
 		}
 	}
 

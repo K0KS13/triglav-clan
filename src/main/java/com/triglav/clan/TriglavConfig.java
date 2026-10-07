@@ -92,4 +92,17 @@ public interface TriglavConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "shareLocation",
+		name = "Deli mojo lokacijo s klanom",
+		description = "Zemljevid v živo na clan.kokalj.dev/zemljevid/zivo pokaže tvoj RSN in kje stojiš, vidijo ga samo prijavljeni člani klana. "
+			+ "Pošlje se na ~30 s, brez zgodovine poti, in izgine 2 minuti po zadnjem pošiljanju. Ne pošilja se v Wildernessu, na PvP/Deadman svetovih "
+			+ "in v instancah (raidi). Ob izklopu, odjavi in vstopu v nevarno območje se takoj izbriše. Privzeto izklopljeno.",
+		position = 7
+	)
+	default boolean shareLocation()
+	{
+		return false;
+	}
 }

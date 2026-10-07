@@ -47,6 +47,11 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
   *Nov LFG* form uses where you stand.
 - **Clan events on the minimap** — a countdown next to the minimap for clan events you signed up for (reminder in
   chat ten minutes before), and while any clan event is running (a BOTW or SOTW) a box with the time left.
+- **Live clan map (opt-in, off by default)** — *Deli mojo lokacijo s klanom* in the plugin settings. When ticked, your
+  position is sent about every 30 seconds and shown to **signed-in clan members only** at clan.kokalj.dev/zemljevid/zivo.
+  No trail is kept (one row per member, forgotten two minutes after the last update). It is **never** sent in the wilderness,
+  on PvP / Deadman / Last Man Standing worlds or in instances (raids), and anything already sent is withdrawn the moment
+  you leave for such an area, log out or untick the setting.
 - **Join an LFG from the game** — the open LFG posts listed under *Danes* in the panel have a *Pridruži se* /
   *Odjavi se* button, with the same rules as the website and Discord buttons (full posts and your own are not joinable).
 - **Post an LFG from the game** — *Nov LFG* in the panel: what, when (in 5 minutes to 2 hours), how many spots, and
@@ -81,6 +86,7 @@ re-reads it on start, right after linking and every hour, so a change on the sit
 - The **clan code** works like a password, not a shareable ID — whoever has it can send fake events to the
   site under your name. Never share it or show it on stream; if it leaks, replace it on `/profil` (the old one
   stops working instantly). The site rate-limits wrong codes and alerts staff when someone is guessing.
+- Your **location** is sent only if you tick *Deli mojo lokacijo s klanom* (off by default), under the limits above.
 - Only what's listed under "What it does today" is sent, and only to `clan.kokalj.dev` — no private messages and
   no bank contents beyond what a loot/death event needs. As with any HTTP request, that server also sees the IP
   address you connect from.
