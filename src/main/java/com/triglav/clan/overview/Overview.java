@@ -46,10 +46,13 @@ public final class Overview
 		public final int going;
 		public final boolean mine;
 		public final Loc loc;
+		/** URL of the icon on the clan site, or null */
+		public final String icon;
 
-		Event(String id, String title, Instant startsAt, Instant endsAt, int going, boolean mine, Loc loc)
+		Event(String id, String title, Instant startsAt, Instant endsAt, int going, boolean mine, Loc loc, String icon)
 		{
 			this.loc = loc;
+			this.icon = icon;
 			this.id = id;
 			this.title = title;
 			this.startsAt = startsAt;
@@ -69,10 +72,12 @@ public final class Overview
 		public final int taken;
 		public final boolean mine;
 		public final Loc loc;
+		public final String icon;
 
-		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, Loc loc)
+		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, Loc loc, String icon)
 		{
 			this.loc = loc;
+			this.icon = icon;
 			this.id = id;
 			this.title = title;
 			this.activity = activity;
@@ -105,12 +110,14 @@ public final class Overview
 		public final Instant startsAt;
 		public final String activity;
 		public final Loc loc;
+		public final String icon;
 		public final String gearTitle;
 		public final List<GearItem> equipment;
 		public final List<GearItem> inventory;
 
-		MyLfg(String id, String title, String activity, Instant startsAt, Loc loc, String gearTitle, List<GearItem> equipment, List<GearItem> inventory)
+		MyLfg(String id, String title, String activity, Instant startsAt, Loc loc, String icon, String gearTitle, List<GearItem> equipment, List<GearItem> inventory)
 		{
+			this.icon = icon;
 			this.activity = activity;
 			this.loc = loc;
 			this.id = id;
@@ -192,7 +199,7 @@ public final class Overview
 			final JsonObject o = e.getAsJsonObject();
 			events.add(new Event(str(o, "id"), str(o, "title"), time(o, "startsAt"),
 				o.has("endsAt") && !o.get("endsAt").isJsonNull() ? time(o, "endsAt") : null, integer(o, "going"),
-				o.has("mine") && !o.get("mine").isJsonNull() && "YES".equals(o.get("mine").getAsString()), loc(o)));
+				o.has("mine") && !o.get("mine").isJsonNull() && "YES".equals(o.get("mine").getAsString()), loc(o), nullableStr(o, "icon")));
 		}
 
 		final List<Lfg> lfg = new ArrayList<>();
@@ -200,7 +207,7 @@ public final class Overview
 		{
 			final JsonObject o = e.getAsJsonObject();
 			lfg.add(new Lfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"),
-				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean(), loc(o)));
+				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean(), loc(o), nullableStr(o, "icon")));
 		}
 
 		final List<MyLfg> mine = new ArrayList<>();
@@ -208,7 +215,7 @@ public final class Overview
 		{
 			final JsonObject o = e.getAsJsonObject();
 			final JsonObject gear = o.has("gear") && o.get("gear").isJsonObject() ? o.getAsJsonObject("gear") : null;
-			mine.add(new MyLfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"), loc(o),
+			mine.add(new MyLfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"), loc(o), nullableStr(o, "icon"),
 				gear == null ? null : str(gear, "title"),
 				gear == null ? Collections.emptyList() : gearItems(array(gear, "equipment")),
 				gear == null ? Collections.emptyList() : gearItems(array(gear, "inventory"))));
@@ -230,6 +237,11 @@ public final class Overview
 
 		return new Overview(me.has("rsn") && !me.get("rsn").isJsonNull() ? me.get("rsn").getAsString() : null,
 			integer(me, "points"), integer(deaths, "month"), events, lfg, mine, goals, longValue(deaths, "valueLost"), shop);
+	}
+
+	private static String nullableStr(JsonObject o, String key)
+	{
+		return o.has(key) && !o.get(key).isJsonNull() ? o.get(key).getAsString() : null;
 	}
 
 	private static Loc loc(JsonObject o)

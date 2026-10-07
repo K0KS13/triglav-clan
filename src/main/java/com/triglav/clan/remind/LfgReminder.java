@@ -45,15 +45,17 @@ public class LfgReminder
 	private final Set<String> reminded = new HashSet<>();
 	private final LocationMarker marker;
 	private final BufferedImage pluginIcon;
+	private final IconCache iconCache;
 
 	private LfgInfoBox infoBox;
-	private int infoBoxItemId = -1;
+	private BufferedImage infoBoxImage;
 
 	@Inject
 	private LfgReminder(Client client, ItemManager itemManager, InfoBoxManager infoBoxManager, OverviewClient overviewClient, TriglavConfig config,
-		LocationMarker marker)
+		LocationMarker marker, IconCache iconCache)
 	{
 		this.marker = marker;
+		this.iconCache = iconCache;
 		this.pluginIcon = ImageUtil.resizeImage(ImageUtil.loadImageResource(LfgReminder.class, "/icon.png"), 32, 32);
 		this.client = client;
 		this.itemManager = itemManager;
@@ -77,7 +79,7 @@ public class LfgReminder
 		Instant nextStart = null;
 		Instant nextEnd = null;
 		Overview.Loc nextLoc = null;
-		int nextBoss = -1;
+		String nextIcon = null;
 
 		for (Overview.MyLfg lfg : overviewClient.current().myLfg)
 		{
@@ -94,7 +96,7 @@ public class LfgReminder
 				nextStart = lfg.startsAt;
 				nextEnd = null;
 				nextLoc = lfg.loc;
-				nextBoss = BossIcons.itemIdFor(lfg.activity, lfg.title);
+				nextIcon = lfg.icon;
 			}
 
 			if (minutes <= REMIND_MINUTES && reminded.add("lfg:" + lfg.id))
@@ -139,7 +141,7 @@ public class LfgReminder
 				nextStart = event.startsAt;
 				nextEnd = event.endsAt;
 				nextLoc = event.loc;
-				nextBoss = BossIcons.itemIdFor(event.title);
+				nextIcon = event.icon;
 			}
 		}
 
@@ -147,7 +149,7 @@ public class LfgReminder
 			&& (nextEnd != null && !now.isBefore(nextStart) || Duration.between(now, nextStart).toMinutes() <= INFOBOX_MINUTES);
 		if (showBox)
 		{
-			showInfoBox(plugin, nextKind, nextTitle, nextStart, nextEnd, nextLoc, nextBoss);
+			showInfoBox(plugin, nextKind, nextTitle, nextStart, nextEnd, nextLoc, nextIcon);
 			marker.show(nextLoc, nextTitle);
 		}
 		else
@@ -213,26 +215,22 @@ public class LfgReminder
 		}
 	}
 
-	private void showInfoBox(Plugin plugin, String kind, String title, Instant startsAt, Instant endsAt, Overview.Loc loc, int bossItemId)
+	private void showInfoBox(Plugin plugin, String kind, String title, Instant startsAt, Instant endsAt, Overview.Loc loc, String iconUrl)
 	{
+		// The boss, skill or event-type icon from the site once it has arrived; the plugin icon until then.
+		final BufferedImage wanted = iconCache.get(iconUrl) != null ? iconCache.get(iconUrl) : pluginIcon;
 		if (infoBox == null)
 		{
-			infoBox = new LfgInfoBox(iconFor(bossItemId), plugin);
-			infoBoxItemId = bossItemId;
+			infoBox = new LfgInfoBox(wanted, plugin);
+			infoBoxImage = wanted;
 			infoBoxManager.addInfoBox(infoBox);
 		}
-		else if (infoBoxItemId != bossItemId)
+		else if (infoBoxImage != wanted)
 		{
-			infoBox.setImage(iconFor(bossItemId));
-			infoBoxItemId = bossItemId;
+			infoBox.setImage(wanted);
+			infoBoxImage = wanted;
 		}
 		infoBox.update(kind, title, startsAt, endsAt, loc == null ? null : loc.label());
-	}
-
-	/** The boss's pet icon when the title names a boss, otherwise the plugin's own icon. */
-	private BufferedImage iconFor(int bossItemId)
-	{
-		return bossItemId < 0 ? pluginIcon : itemManager.getImage(bossItemId);
 	}
 
 	private void removeInfoBox()
