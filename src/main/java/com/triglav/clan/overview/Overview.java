@@ -19,14 +19,17 @@ public final class Overview
 		public final String id;
 		public final String title;
 		public final Instant startsAt;
+		/** null when the site has no end time for the event */
+		public final Instant endsAt;
 		public final int going;
 		public final boolean mine;
 
-		Event(String id, String title, Instant startsAt, int going, boolean mine)
+		Event(String id, String title, Instant startsAt, Instant endsAt, int going, boolean mine)
 		{
 			this.id = id;
 			this.title = title;
 			this.startsAt = startsAt;
+			this.endsAt = endsAt;
 			this.going = going;
 			this.mine = mine;
 		}
@@ -157,7 +160,8 @@ public final class Overview
 		for (JsonElement e : array(body, "events"))
 		{
 			final JsonObject o = e.getAsJsonObject();
-			events.add(new Event(str(o, "id"), str(o, "title"), time(o, "startsAt"), integer(o, "going"),
+			events.add(new Event(str(o, "id"), str(o, "title"), time(o, "startsAt"),
+				o.has("endsAt") && !o.get("endsAt").isJsonNull() ? time(o, "endsAt") : null, integer(o, "going"),
 				o.has("mine") && !o.get("mine").isJsonNull() && "YES".equals(o.get("mine").getAsString())));
 		}
 

@@ -66,7 +66,11 @@ public class LfgReminder
 		}
 
 		final Instant now = Instant.now();
-		Overview.MyLfg next = null;
+		String nextKind = null;
+		String nextTitle = null;
+		Instant nextStart = null;
+		Instant nextEnd = null;
+
 		for (Overview.MyLfg lfg : overviewClient.current().myLfg)
 		{
 			final long minutes = Duration.between(now, lfg.startsAt).toMinutes();
@@ -75,12 +79,15 @@ public class LfgReminder
 				continue;
 			}
 
-			if (next == null || lfg.startsAt.isBefore(next.startsAt))
+			if (nextStart == null || lfg.startsAt.isBefore(nextStart))
 			{
-				next = lfg;
+				nextKind = "LFG";
+				nextTitle = lfg.title;
+				nextStart = lfg.startsAt;
+				nextEnd = null;
 			}
 
-			if (minutes <= REMIND_MINUTES && reminded.add(lfg.id))
+			if (minutes <= REMIND_MINUTES && reminded.add("lfg:" + lfg.id))
 			{
 				chat.accept(minutes <= 0 ? "LFG »" + lfg.title + "« se zacenja zdaj." : "LFG »" + lfg.title + "« se zacne cez " + Math.max(1, minutes) + " min.");
 				if (lfg.hasGear())
@@ -90,9 +97,37 @@ public class LfgReminder
 			}
 		}
 
-		if (next != null && Duration.between(now, next.startsAt).toMinutes() <= INFOBOX_MINUTES)
+		// Clan events: ones the member is going to get the reminder; every running event (a BOTW or SOTW that
+		// is on right now) shows in the box, since a competition is clan-wide whether or not you signed up.
+		for (Overview.Event event : overviewClient.current().events)
 		{
-			showInfoBox(plugin, next);
+			final long minutes = Duration.between(now, event.startsAt).toMinutes();
+			final boolean running = minutes <= 0 && (event.endsAt == null ? minutes >= -LINGER_MINUTES : now.isBefore(event.endsAt));
+			if (!running && minutes < 0)
+			{
+				continue;
+			}
+
+			if (event.mine && minutes <= REMIND_MINUTES && reminded.add("event:" + event.id))
+			{
+				chat.accept(minutes <= 0 ? "Dogodek »" + event.title + "« se zacenja zdaj." : "Dogodek »" + event.title + "« se zacne cez " + Math.max(1, minutes) + " min.");
+			}
+
+			final boolean show = running || (event.mine && minutes <= INFOBOX_MINUTES);
+			if (show && (nextStart == null || running || event.startsAt.isBefore(nextStart)))
+			{
+				nextKind = "Dogodek";
+				nextTitle = event.title;
+				nextStart = event.startsAt;
+				nextEnd = event.endsAt;
+			}
+		}
+
+		final boolean showBox = nextStart != null
+			&& (nextEnd != null && !now.isBefore(nextStart) || Duration.between(now, nextStart).toMinutes() <= INFOBOX_MINUTES);
+		if (showBox)
+		{
+			showInfoBox(plugin, nextKind, nextTitle, nextStart, nextEnd);
 		}
 		else
 		{
@@ -157,7 +192,7 @@ public class LfgReminder
 		}
 	}
 
-	private void showInfoBox(Plugin plugin, Overview.MyLfg lfg)
+	private void showInfoBox(Plugin plugin, String kind, String title, Instant startsAt, Instant endsAt)
 	{
 		if (infoBox == null)
 		{
@@ -165,7 +200,7 @@ public class LfgReminder
 			infoBox = new LfgInfoBox(icon, plugin);
 			infoBoxManager.addInfoBox(infoBox);
 		}
-		infoBox.update(lfg.title, lfg.startsAt);
+		infoBox.update(kind, title, startsAt, endsAt);
 	}
 
 	private void removeInfoBox()
