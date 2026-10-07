@@ -98,10 +98,22 @@ public interface TriglavConfig extends Config
 		name = "Deli mojo lokacijo s klanom",
 		description = "Zemljevid v živo na clan.kokalj.dev/zemljevid/zivo pokaže tvoj RSN in kje stojiš, vidijo ga samo prijavljeni člani klana. "
 			+ "Pošlje se na ~30 s, brez zgodovine poti, in izgine 2 minuti po zadnjem pošiljanju. Ne pošilja se v Wildernessu, na PvP/Deadman svetovih "
-			+ "in v instancah (raidi). Ob izklopu, odjavi in vstopu v nevarno območje se takoj izbriše. Privzeto izklopljeno.",
+			+ "(razen če vklopiš spodnjo kljukico) in nikoli v instancah (raidi). Ob izklopu in odjavi se takoj izbriše. Privzeto izklopljeno.",
 		position = 7
 	)
 	default boolean shareLocation()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "shareLocationDanger",
+		name = "Deli lokacijo tudi v Wildernessu in na PvP/Deadman",
+		description = "Dodatna kljukica, ki deluje samo če je vklopljeno »Deli mojo lokacijo s klanom«. Privzeto izklopljeno, ker lahko tvojo lokacijo v "
+			+ "Wildernessu ali na PvP/Deadman svetu vidijo samo člani klana, ampak jo lahko kdorkoli med njimi izkoristi. Instance (raidi) se ne pošiljajo nikoli.",
+		position = 8
+	)
+	default boolean shareLocationDanger()
 	{
 		return false;
 	}

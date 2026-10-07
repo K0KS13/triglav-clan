@@ -49,9 +49,10 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
   chat ten minutes before), and while any clan event is running (a BOTW or SOTW) a box with the time left.
 - **Live clan map (opt-in, off by default)** — *Deli mojo lokacijo s klanom* in the plugin settings. When ticked, your
   position is sent about every 30 seconds and shown to **signed-in clan members only** at clan.kokalj.dev/zemljevid/zivo.
-  No trail is kept (one row per member, forgotten two minutes after the last update). It is **never** sent in the wilderness,
-  on PvP / Deadman / Last Man Standing worlds or in instances (raids), and anything already sent is withdrawn the moment
-  you leave for such an area, log out or untick the setting.
+  No trail is kept (one row per member, forgotten two minutes after the last update). It is **never** sent in instances
+  (raids). The wilderness and PvP / Deadman / Last Man Standing worlds are skipped too, unless you additionally tick
+  *Deli lokacijo tudi v Wildernessu in na PvP/Deadman* (also off by default). Anything already sent is withdrawn the moment
+  you leave for an area that is not allowed, log out or untick a setting.
 - **Join an LFG from the game** — the open LFG posts listed under *Danes* in the panel have a *Pridruži se* /
   *Odjavi se* button, with the same rules as the website and Discord buttons (full posts and your own are not joinable).
 - **Post an LFG from the game** — *Nov LFG* in the panel: what, when (in 5 minutes to 2 hours), how many spots, and

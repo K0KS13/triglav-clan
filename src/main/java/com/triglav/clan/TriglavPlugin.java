@@ -564,6 +564,12 @@ public class TriglavPlugin extends Plugin
 			keyStore.refresh(result -> onLinkResult(result, true));
 		}
 
+		if (TriglavConfig.GROUP.equals(event.getGroup()) && "shareLocationDanger".equals(event.getKey()))
+		{
+			// Ticking it off must withdraw a position that was sent from a dangerous area right away.
+			locationSharer.clear();
+		}
+
 		if (TriglavConfig.GROUP.equals(event.getGroup()) && "shareLocation".equals(event.getKey()))
 		{
 			if (config.shareLocation())

@@ -64,7 +64,7 @@ public class LocationSharer
 			return;
 		}
 
-		if (isSensitive(client))
+		if (isSensitive(client, config.shareLocationDanger()))
 		{
 			clear();
 			return;
@@ -101,12 +101,24 @@ public class LocationSharer
 		post(body);
 	}
 
-	/** Wilderness, PvP-type worlds and instances: never share, and withdraw anything already shared. */
-	static boolean isSensitive(Client client)
+	/**
+	 * Instances are never shared. The wilderness and PvP-type worlds are not shared either, unless the member
+	 * ticked the extra "also in the wilderness and on PvP/Deadman" setting; anything already sent is withdrawn.
+	 */
+	static boolean isSensitive(Client client, boolean allowDanger)
+	{
+		if (client.isInInstancedRegion())
+		{
+			return true;
+		}
+
+		return !allowDanger && isDangerous(client);
+	}
+
+	private static boolean isDangerous(Client client)
 	{
 		final Set<WorldType> world = client.getWorldType();
 		return client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 1
-			|| client.isInInstancedRegion()
 			|| world.contains(WorldType.PVP)
 			|| world.contains(WorldType.BOUNTY)
 			|| world.contains(WorldType.HIGH_RISK)

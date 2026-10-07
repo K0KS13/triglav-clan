@@ -26,21 +26,35 @@ public class LocationSharerTest
 	@Test
 	public void anOrdinaryWorldMayShare()
 	{
-		assertFalse(LocationSharer.isSensitive(client));
+		assertFalse(LocationSharer.isSensitive(client, false));
 	}
 
 	@Test
 	public void theWildernessNeverShares()
 	{
 		when(client.getVarbitValue(VarbitID.INSIDE_WILDERNESS)).thenReturn(1);
-		assertTrue(LocationSharer.isSensitive(client));
+		assertTrue(LocationSharer.isSensitive(client, false));
 	}
 
 	@Test
-	public void instancesNeverShare()
+	public void instancesNeverShareEvenWithTheExtraTick()
 	{
 		when(client.isInInstancedRegion()).thenReturn(true);
-		assertTrue(LocationSharer.isSensitive(client));
+		assertTrue(LocationSharer.isSensitive(client, false));
+		assertTrue(LocationSharer.isSensitive(client, true));
+	}
+
+	@Test
+	public void theExtraTickAllowsTheWildernessAndPvpWorlds()
+	{
+		when(client.getVarbitValue(VarbitID.INSIDE_WILDERNESS)).thenReturn(1);
+		assertTrue(LocationSharer.isSensitive(client, false));
+		assertFalse(LocationSharer.isSensitive(client, true));
+
+		when(client.getVarbitValue(VarbitID.INSIDE_WILDERNESS)).thenReturn(0);
+		when(client.getWorldType()).thenReturn(EnumSet.of(WorldType.MEMBERS, WorldType.DEADMAN));
+		assertTrue(LocationSharer.isSensitive(client, false));
+		assertFalse(LocationSharer.isSensitive(client, true));
 	}
 
 	@Test
@@ -49,7 +63,7 @@ public class LocationSharerTest
 		for (WorldType type : new WorldType[]{WorldType.PVP, WorldType.BOUNTY, WorldType.HIGH_RISK, WorldType.DEADMAN, WorldType.LAST_MAN_STANDING, WorldType.PVP_ARENA, WorldType.TOURNAMENT_WORLD})
 		{
 			when(client.getWorldType()).thenReturn(EnumSet.of(WorldType.MEMBERS, type));
-			assertTrue(type + " should be sensitive", LocationSharer.isSensitive(client));
+			assertTrue(type + " should be sensitive", LocationSharer.isSensitive(client, false));
 		}
 	}
 }
