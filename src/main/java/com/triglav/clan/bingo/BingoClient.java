@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,9 @@ public class BingoClient
 	private final KeyStore keyStore;
 	private final ScheduledExecutorService executor;
 	private final AtomicReference<BingoBoard> board = new AtomicReference<>();
+	private volatile Consumer<String> announcer = message ->
+	{
+	};
 
 	@Inject
 	private BingoClient(OkHttpClient httpClient, TriglavConfig config, KeyStore keyStore, ScheduledExecutorService executor)
@@ -49,6 +53,12 @@ public class BingoClient
 		this.keyStore = keyStore;
 		this.executor = executor;
 		executor.scheduleWithFixedDelay(this::refresh, 5, POLL_SECONDS, TimeUnit.SECONDS);
+	}
+
+	/** Told when a tile turns confirmed, so a drop is acknowledged in the game chat within seconds. */
+	public void setAnnouncer(Consumer<String> announcer)
+	{
+		this.announcer = announcer;
 	}
 
 	/** @return the current board, or null if there is no active bingo for this member */
@@ -83,12 +93,48 @@ public class BingoClient
 			{
 				return;
 			}
-			board.set(parse(new JsonParser().parse(response.body().string()).getAsJsonObject()));
+			final BingoBoard fresh = parse(new JsonParser().parse(response.body().string()).getAsJsonObject());
+			announceNewlyDone(board.getAndSet(fresh), fresh);
 		}
 		catch (IOException | RuntimeException e)
 		{
 			log.debug("Bingo poll failed: {}", e.getMessage());
 		}
+	}
+
+	private void announceNewlyDone(BingoBoard before, BingoBoard after)
+	{
+		for (String message : newlyDone(before, after))
+		{
+			announcer.accept(message);
+		}
+	}
+
+	/** Only between two boards of the same bingo: the first load after login must not announce old progress. */
+	static List<String> newlyDone(BingoBoard before, BingoBoard after)
+	{
+		final List<String> messages = new ArrayList<>();
+		if (before == null || after == null || !before.title.equals(after.title))
+		{
+			return messages;
+		}
+
+		for (BingoBoard.Tile tile : after.tiles)
+		{
+			if (tile.status != BingoBoard.Status.DONE)
+			{
+				continue;
+			}
+
+			for (BingoBoard.Tile old : before.tiles)
+			{
+				if (old.index == tile.index && old.status != BingoBoard.Status.DONE)
+				{
+					messages.add("Bingo: ploščica »" + tile.title + "« je potrjena" + (tile.points > 0 ? " (+" + tile.points + " točk za ekipo)." : "."));
+				}
+			}
+		}
+		return messages;
 	}
 
 	static BingoBoard parse(JsonObject body)

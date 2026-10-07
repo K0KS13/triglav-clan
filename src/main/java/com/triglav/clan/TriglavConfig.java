@@ -68,4 +68,28 @@ public interface TriglavConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "lfgReminders",
+		name = "Opomniki za LFG",
+		description = "Ko se pridružiš LFG-ju, ti 10 minut pred začetkom izpiše opomnik v chat (in preveri opremo po priporočenem setupu), "
+			+ "ob strani minimape pa pokaže odštevanje.",
+		position = 5
+	)
+	default boolean lfgReminders()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "autoSendGear",
+		name = "Samodejno pošlji setup",
+		description = "Ko zamenjaš opremo, jo čez pol minute sam pošlje na stran kot en zapis »Samodejno: tvoj RSN« (ne ustvarja novih). "
+			+ "Pošlje opremo, inventar in spellbook. Privzeto izklopljeno.",
+		position = 6
+	)
+	default boolean autoSendGear()
+	{
+		return false;
+	}
 }

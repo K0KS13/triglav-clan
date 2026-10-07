@@ -1,8 +1,14 @@
 package com.triglav.clan;
 
+import com.triglav.clan.overview.Overview;
+
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -12,6 +18,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import net.runelite.client.ui.ColorScheme;
@@ -39,6 +46,19 @@ public class TriglavPanel extends PluginPanel
 	private Consumer<String> onSendGear = title ->
 	{
 	};
+	private Consumer<String> onShare = text ->
+	{
+	};
+	private Consumer<String> onBuy = itemId ->
+	{
+	};
+	private Runnable onCheckGear = () ->
+	{
+	};
+
+	/** Rebuilt on every overview refresh: today, goals, deaths, points and shop. */
+	private final JPanel live = new JPanel();
+	private final JTextField shareText = new JTextField();
 
 	@Inject
 	private TriglavPanel()
@@ -58,6 +78,11 @@ public class TriglavPanel extends PluginPanel
 		statusValue.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
 		statusValue.setAlignmentX(Component.LEFT_ALIGNMENT);
 		content.add(statusValue);
+
+		live.setLayout(new BoxLayout(live, BoxLayout.Y_AXIS));
+		live.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		live.setAlignmentX(Component.LEFT_ALIGNMENT);
+		content.add(live);
 
 		content.add(spacer());
 		content.add(header("Poveži račun"));
@@ -81,6 +106,24 @@ public class TriglavPanel extends PluginPanel
 		content.add(linkButton);
 
 		content.add(spacer());
+		content.add(header("Povej klanu"));
+		shareText.setFont(FontManager.getDefaultFont());
+		shareText.setAlignmentX(Component.LEFT_ALIGNMENT);
+		shareText.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		shareText.setToolTipText("Kratko sporocilo (neobvezno)");
+		content.add(shareText);
+		content.add(Box.createVerticalStrut(4));
+		final JButton shareButton = button("Pošlji screenshot klanu");
+		shareButton.addActionListener(e ->
+		{
+			onShare.accept(shareText.getText().trim());
+			shareText.setText("");
+		});
+		content.add(shareButton);
+		content.add(Box.createVerticalStrut(4));
+		content.add(note("Posnetek zaslona in tvoje besedilo gresta v Discord klana. Največ 4 objave na uro."));
+
+		content.add(spacer());
 		content.add(header("Gear setup"));
 		gearTitle.setFont(FontManager.getDefaultFont());
 		gearTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -93,6 +136,12 @@ public class TriglavPanel extends PluginPanel
 		content.add(gearButton);
 		content.add(Box.createVerticalStrut(4));
 		content.add(note("Pošlje opremo in inventar, ki ju imaš zdaj, v gear builder na strani."));
+		content.add(Box.createVerticalStrut(6));
+		final JButton checkButton = button("Preveri opremo za LFG");
+		checkButton.addActionListener(e -> onCheckGear.run());
+		content.add(checkButton);
+		content.add(Box.createVerticalStrut(4));
+		content.add(note("Primerja, kar nosiš, s setupom LFG-ja, v katerega si prijavljen."));
 
 		content.add(spacer());
 		final JButton siteButton = button("Odpri clan.kokalj.dev");
@@ -110,6 +159,114 @@ public class TriglavPanel extends PluginPanel
 	public void setOnSendGear(Consumer<String> onSendGear)
 	{
 		this.onSendGear = onSendGear;
+	}
+
+	public void setOnShare(Consumer<String> onShare)
+	{
+		this.onShare = onShare;
+	}
+
+	public void setOnBuy(Consumer<String> onBuy)
+	{
+		this.onBuy = onBuy;
+	}
+
+	public void setOnCheckGear(Runnable onCheckGear)
+	{
+		this.onCheckGear = onCheckGear;
+	}
+
+	/** Redraws the live sections from the latest overview; safe to call from any thread. */
+	public void showOverview(Overview overview, boolean linked)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			live.removeAll();
+			if (linked)
+			{
+				addLive(overview);
+			}
+			live.revalidate();
+			live.repaint();
+		});
+	}
+
+	private void addLive(Overview o)
+	{
+		live.add(spacer());
+		live.add(header("Točke: " + o.points));
+
+		if (!o.events.isEmpty() || !o.lfg.isEmpty())
+		{
+			live.add(spacer());
+			live.add(header("Danes"));
+			for (Overview.Event e : o.events)
+			{
+				live.add(line(when(e.startsAt) + "  " + e.title + (e.mine ? "  (prijavljen)" : "") + "  · " + e.going + " gre"));
+			}
+			for (Overview.Lfg l : o.lfg)
+			{
+				live.add(line(when(l.startsAt) + "  LFG " + l.title + "  · " + l.taken + "/" + l.capacity + (l.mine ? "  (si noter)" : "")));
+			}
+		}
+
+		if (!o.goals.isEmpty())
+		{
+			live.add(spacer());
+			live.add(header("Cilji klana"));
+			for (Overview.Goal g : o.goals)
+			{
+				live.add(line(g.title));
+				final JProgressBar bar = new JProgressBar(0, Math.max(1, g.target));
+				bar.setValue(Math.min(g.current, g.target));
+				bar.setStringPainted(true);
+				bar.setString(g.current + " / " + g.target);
+				bar.setAlignmentX(Component.LEFT_ALIGNMENT);
+				bar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+				live.add(bar);
+				live.add(Box.createVerticalStrut(4));
+			}
+		}
+
+		live.add(spacer());
+		live.add(header("Smrti ta mesec"));
+		live.add(line(o.deathsThisMonth == 0 ? "ni jih" : o.deathsThisMonth + "× · izgubljeno " + gp(o.valueLostThisMonth)));
+
+		if (!o.shop.isEmpty())
+		{
+			live.add(spacer());
+			live.add(header("Trgovina"));
+			for (Overview.ShopItem item : o.shop)
+			{
+				final JButton buy = button(item.name + " · " + item.cost);
+				buy.setEnabled(item.affordable);
+				buy.setToolTipText(item.affordable ? "Kupi (vodstvo potrdi)" : "Premalo točk");
+				buy.addActionListener(e -> onBuy.accept(item.id));
+				live.add(buy);
+				live.add(Box.createVerticalStrut(3));
+			}
+			live.add(note("Nazive in barve izbereš na strani."));
+		}
+	}
+
+	private static String when(Instant at)
+	{
+		final long minutes = Duration.between(Instant.now(), at).toMinutes();
+		return minutes <= 0 ? "zdaj" : minutes < 60 ? "čez " + minutes + " min" : DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(at);
+	}
+
+	private static String gp(long value)
+	{
+		return value >= 1_000_000 ? String.format("%.1fM", value / 1_000_000.0) : value >= 1_000 ? (value / 1_000) + "k" : String.valueOf(value);
+	}
+
+	private static JLabel line(String text)
+	{
+		final JLabel label = new JLabel("<html><body style='width:150px'>" + text.replace("<", "&lt;") + "</body></html>");
+		label.setFont(FontManager.getDefaultFont());
+		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
 	}
 
 	/** @param name Discord name the code belongs to, or null if unknown this session */

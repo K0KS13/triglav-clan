@@ -31,11 +31,15 @@ import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.ConfigClient;
 import com.triglav.clan.net.Envelope;
 import com.triglav.clan.net.KeyStore;
+import com.triglav.clan.overview.OverviewClient;
+import com.triglav.clan.remind.LfgReminder;
+import com.triglav.clan.share.ShareClient;
 import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -50,7 +54,9 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClanChannelChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.InventoryID;
 import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.WidgetLoaded;
@@ -159,6 +165,18 @@ public class TriglavPlugin extends Plugin
 	@Inject
 	private GearClient gearClient;
 
+	@Inject
+	private OverviewClient overviewClient;
+
+	@Inject
+	private ShareClient shareClient;
+
+	@Inject
+	private LfgReminder lfgReminder;
+
+	private static final int AUTO_GEAR_DELAY_SECONDS = 30;
+	private ScheduledFuture<?> autoGearTask;
+
 	private static final int SCREENSHOT_TIMEOUT_SECONDS = 2;
 
 	private NavigationButton navButton;
@@ -183,6 +201,17 @@ public class TriglavPlugin extends Plugin
 		panel.setOnLink(this::linkCode);
 		panel.setOnSendGear(title -> gearClient.sendCurrentSetup(title, result -> chat("TRIGLAV: " + result)));
 		feedClient.setSink(this::showFeedMessage);
+		panel.setOnShare(this::shareWithClan);
+		panel.setOnBuy(itemId -> overviewClient.buy(itemId, result -> chat("TRIGLAV: " + result)));
+		panel.setOnCheckGear(this::checkLfgGear);
+		overviewClient.setListener(overview -> panel.showOverview(overview, keyStore.isLinked()));
+		bingoClient.setAnnouncer(message ->
+		{
+			if (config.inGameMessages())
+			{
+				chat(message);
+			}
+		});
 		overlayManager.add(bingoOverlay);
 		// Enabled while already in game: send the login snapshot on the next tick.
 		lastGameState = client.getGameState();
@@ -195,6 +224,11 @@ public class TriglavPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		lfgReminder.shutDown();
+		if (autoGearTask != null)
+		{
+			autoGearTask.cancel(false);
+		}
 		overlayManager.remove(bingoOverlay);
 		clientToolbar.removeNavigation(navButton);
 	}
@@ -282,6 +316,25 @@ public class TriglavPlugin extends Plugin
 				}
 			});
 		}
+	}
+
+	/** One upload half a minute after the last equipment change, so swapping gear in a bank does not spam. */
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() != InventoryID.EQUIPMENT.getId() || !config.autoSendGear()
+			|| client.getGameState() != GameState.LOGGED_IN || !keyStore.isLinked())
+		{
+			return;
+		}
+
+		if (autoGearTask != null)
+		{
+			autoGearTask.cancel(false);
+		}
+		autoGearTask = executor.schedule(() -> gearClient.sendCurrentSetup("", true, result ->
+		{
+		}), AUTO_GEAR_DELAY_SECONDS, TimeUnit.SECONDS);
 	}
 
 	@Subscribe
@@ -405,6 +458,7 @@ public class TriglavPlugin extends Plugin
 		}
 
 		petDetector.onGameTick();
+		lfgReminder.onGameTick(this, message -> chat("TRIGLAV: " + message));
 
 		final JsonObject deathExtra = deathTracker.onGameTick(client);
 		if (deathExtra != null && config.sendDeaths())
@@ -515,11 +569,13 @@ public class TriglavPlugin extends Plugin
 	private void onLinkResult(KeyStore.Result result, boolean announce)
 	{
 		panel.showLinked(keyStore.isLinked(), keyStore.linkedName());
+		panel.showOverview(overviewClient.current(), keyStore.isLinked());
 
 		switch (result)
 		{
 			case LINKED:
 				configClient.refreshNow();
+				overviewClient.refreshNow();
 				if (announce && client.getGameState() == GameState.LOGGED_IN)
 				{
 					// Linked mid-session: the login snapshot went nowhere without a key, so send it now.
@@ -542,6 +598,39 @@ public class TriglavPlugin extends Plugin
 			default:
 				break;
 		}
+	}
+
+	/** Panel button: screenshot plus the member's line, posted to the clan's Discord by the site. */
+	private void shareWithClan(String text)
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			chat("TRIGLAV: prijavi se v igro, da lahko posljes posnetek.");
+			return;
+		}
+
+		captureScreenshot(png -> shareClient.share(text, png, result -> chat("TRIGLAV: " + result)));
+	}
+
+	/** Panel button: compare what is carried with the setup of the next joined LFG. */
+	private void checkLfgGear()
+	{
+		clientThread.invoke(() ->
+		{
+			final com.triglav.clan.overview.Overview.MyLfg next = lfgReminder.nextWithGear();
+			if (client.getGameState() != GameState.LOGGED_IN)
+			{
+				chat("TRIGLAV: prijavi se v igro.");
+			}
+			else if (next == null)
+			{
+				chat("TRIGLAV: nimas LFG-ja s priporocenim setupom.");
+			}
+			else
+			{
+				lfgReminder.checkGear(next, message -> chat("TRIGLAV: " + message));
+			}
+		});
 	}
 
 	private void showFeedMessage(String text)

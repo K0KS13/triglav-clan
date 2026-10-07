@@ -64,6 +64,12 @@ public class GearClient
 	 */
 	public void sendCurrentSetup(String title, Consumer<String> onResult)
 	{
+		sendCurrentSetup(title, false, onResult);
+	}
+
+	/** @param auto true for the background upload: the site keeps one record per member and overwrites it */
+	public void sendCurrentSetup(String title, boolean auto, Consumer<String> onResult)
+	{
 		final String clanCode = keyStore.ingestKey();
 		if (clanCode == null)
 		{
@@ -90,6 +96,7 @@ public class GearClient
 			final JsonObject payload = new JsonObject();
 			payload.addProperty("ingestKey", clanCode);
 			payload.addProperty("title", title);
+			payload.addProperty("auto", auto);
 			payload.add("setup", setup);
 
 			executor.execute(() -> post(payload, onResult));

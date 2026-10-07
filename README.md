@@ -36,6 +36,17 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
 - **Deaths** — an approximate GP value lost, from the equipment+inventory value just before and just after death.
 - **Bingo board** — during an active clan bingo, your team's board as an in-game overlay (green = approved,
   yellow = waiting for staff). It refreshes shortly after a drop that matches an open tile. Move it with Alt+drag.
+- **Today in the panel** — events and open LFG posts for the next 24 hours, the clan's shared goals (e.g. "10,000
+  Vorkath KC together") as progress bars, your deaths this month with the value lost, your points, and a few
+  shop rewards you can buy with one click (titles and name colours stay on the site, they need a choice).
+- **LFG reminders** — once you have joined an LFG, a chat reminder ten minutes before it starts, a check of what you
+  carry against the setup the post recommends ("missing: Abyssal whip, Shark x2"), and a countdown next to the
+  minimap from half an hour out. *Check gear for LFG* in the panel runs the same check on demand.
+- **Tell the clan** — a panel button that posts a screenshot and a short line to the clan's Discord. At most four
+  posts an hour.
+- **Bingo confirmations** — a chat line the moment one of your team's tiles is confirmed.
+- **Auto gear (off by default)** — *Samodejno pošlji setup*: half a minute after you change equipment, the setup is
+  uploaded to one record on the site (it overwrites itself, it never piles up).
 - **Gear setup** — *Pošlji trenutni setup na stran* in the panel sends your worn equipment, inventory and
   spellbook to the site's gear builder and prints the link in chat.
 
