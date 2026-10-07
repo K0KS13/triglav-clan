@@ -39,6 +39,11 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
 - **Today in the panel** — events and open LFG posts for the next 24 hours, the clan's shared goals (e.g. "10,000
   Vorkath KC together") as progress bars, your deaths this month with the value lost, your points, and a few
   shop rewards you can buy with one click (titles and name colours stay on the site, they need a choice).
+- **Which boss, and where** — the countdown box next to the minimap shows the boss's pet icon when an LFG or event
+  names a boss (Zulrah, Vorkath, ToA …), otherwise the plugin icon. If the post has a meeting spot, it is marked on
+  the world map (hover for the name, click to jump there), as a gold pin on the minimap while it is in view, and
+  named in the chat reminder. The spot is picked on a map on the website, or *zbor je tu, kjer stojim* in the
+  *Nov LFG* form uses where you stand.
 - **Clan events on the minimap** — a countdown next to the minimap for clan events you signed up for (reminder in
   chat ten minutes before), and while any clan event is running (a BOTW or SOTW) a box with the time left.
 - **Post an LFG from the game** — *Nov LFG* in the panel: what, when (in 5 minutes to 2 hours), how many spots, and

@@ -34,6 +34,7 @@ import com.triglav.clan.net.Envelope;
 import com.triglav.clan.net.KeyStore;
 import com.triglav.clan.overview.OverviewClient;
 import com.triglav.clan.remind.LfgReminder;
+import com.triglav.clan.remind.LocationOverlay;
 import com.triglav.clan.share.ShareClient;
 import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
@@ -178,6 +179,9 @@ public class TriglavPlugin extends Plugin
 	@Inject
 	private LfgReminder lfgReminder;
 
+	@Inject
+	private LocationOverlay locationOverlay;
+
 	private static final int AUTO_GEAR_DELAY_SECONDS = 30;
 	private ScheduledFuture<?> autoGearTask;
 
@@ -218,6 +222,7 @@ public class TriglavPlugin extends Plugin
 			}
 		});
 		overlayManager.add(bingoOverlay);
+		overlayManager.add(locationOverlay);
 		// Enabled while already in game: send the login snapshot on the next tick.
 		lastGameState = client.getGameState();
 		loginPending = lastGameState == GameState.LOGGED_IN;
@@ -235,6 +240,7 @@ public class TriglavPlugin extends Plugin
 			autoGearTask.cancel(false);
 		}
 		overlayManager.remove(bingoOverlay);
+		overlayManager.remove(locationOverlay);
 		clientToolbar.removeNavigation(navButton);
 	}
 
@@ -618,7 +624,7 @@ public class TriglavPlugin extends Plugin
 	}
 
 	/** Panel button: post an LFG from the game, optionally with the current setup as its recommended gear. */
-	private void createLfg(String activity, String title, int inMinutes, int capacity, boolean attachSetup)
+	private void createLfg(String activity, String title, int inMinutes, int capacity, boolean attachSetup, String placeName)
 	{
 		if (!keyStore.isLinked())
 		{
@@ -627,13 +633,27 @@ public class TriglavPlugin extends Plugin
 		}
 
 		final java.util.function.Consumer<String> done = result -> chat("TRIGLAV: " + result);
-		if (!attachSetup)
-		{
-			lfgClient.create(activity, title, inMinutes, capacity, null, done);
-			return;
-		}
 
-		gearClient.captureSetup(title, setup -> lfgClient.create(activity, title, inMinutes, capacity, setup, done));
+		// Position and setup are read on the client thread, then the request goes out.
+		clientThread.invoke(() ->
+		{
+			LfgClient.Place place = null;
+			if (placeName != null && client.getLocalPlayer() != null)
+			{
+				final net.runelite.api.coords.WorldPoint here = client.getLocalPlayer().getWorldLocation();
+				place = new LfgClient.Place(here.getX(), here.getY(), here.getPlane(), placeName);
+			}
+
+			final LfgClient.Place spot = place;
+			if (attachSetup)
+			{
+				gearClient.captureSetup(title, setup -> lfgClient.create(activity, title, inMinutes, capacity, setup, spot, done));
+			}
+			else
+			{
+				lfgClient.create(activity, title, inMinutes, capacity, null, spot, done);
+			}
+		});
 	}
 
 	/** Panel button: compare what is carried with the setup of the next joined LFG. */

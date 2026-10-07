@@ -43,12 +43,18 @@ public class LfgReminder
 	private final OverviewClient overviewClient;
 	private final TriglavConfig config;
 	private final Set<String> reminded = new HashSet<>();
+	private final LocationMarker marker;
+	private final BufferedImage pluginIcon;
 
 	private LfgInfoBox infoBox;
+	private int infoBoxItemId = -1;
 
 	@Inject
-	private LfgReminder(Client client, ItemManager itemManager, InfoBoxManager infoBoxManager, OverviewClient overviewClient, TriglavConfig config)
+	private LfgReminder(Client client, ItemManager itemManager, InfoBoxManager infoBoxManager, OverviewClient overviewClient, TriglavConfig config,
+		LocationMarker marker)
 	{
+		this.marker = marker;
+		this.pluginIcon = ImageUtil.resizeImage(ImageUtil.loadImageResource(LfgReminder.class, "/icon.png"), 32, 32);
 		this.client = client;
 		this.itemManager = itemManager;
 		this.infoBoxManager = infoBoxManager;
@@ -70,6 +76,8 @@ public class LfgReminder
 		String nextTitle = null;
 		Instant nextStart = null;
 		Instant nextEnd = null;
+		Overview.Loc nextLoc = null;
+		int nextBoss = -1;
 
 		for (Overview.MyLfg lfg : overviewClient.current().myLfg)
 		{
@@ -85,11 +93,17 @@ public class LfgReminder
 				nextTitle = lfg.title;
 				nextStart = lfg.startsAt;
 				nextEnd = null;
+				nextLoc = lfg.loc;
+				nextBoss = BossIcons.itemIdFor(lfg.activity, lfg.title);
 			}
 
 			if (minutes <= REMIND_MINUTES && reminded.add("lfg:" + lfg.id))
 			{
 				chat.accept(minutes <= 0 ? "LFG »" + lfg.title + "« se zacenja zdaj." : "LFG »" + lfg.title + "« se zacne cez " + Math.max(1, minutes) + " min.");
+				if (lfg.loc != null)
+				{
+					chat.accept("lokacija: " + lfg.loc.label() + " (" + lfg.loc.x + ", " + lfg.loc.y + ") - oznaceno na zemljevidu.");
+				}
 				if (lfg.hasGear())
 				{
 					checkGear(lfg, chat);
@@ -111,6 +125,10 @@ public class LfgReminder
 			if (event.mine && minutes <= REMIND_MINUTES && reminded.add("event:" + event.id))
 			{
 				chat.accept(minutes <= 0 ? "Dogodek »" + event.title + "« se zacenja zdaj." : "Dogodek »" + event.title + "« se zacne cez " + Math.max(1, minutes) + " min.");
+				if (event.loc != null)
+				{
+					chat.accept("lokacija: " + event.loc.label() + " (" + event.loc.x + ", " + event.loc.y + ") - oznaceno na zemljevidu.");
+				}
 			}
 
 			final boolean show = running || (event.mine && minutes <= INFOBOX_MINUTES);
@@ -120,6 +138,8 @@ public class LfgReminder
 				nextTitle = event.title;
 				nextStart = event.startsAt;
 				nextEnd = event.endsAt;
+				nextLoc = event.loc;
+				nextBoss = BossIcons.itemIdFor(event.title);
 			}
 		}
 
@@ -127,7 +147,8 @@ public class LfgReminder
 			&& (nextEnd != null && !now.isBefore(nextStart) || Duration.between(now, nextStart).toMinutes() <= INFOBOX_MINUTES);
 		if (showBox)
 		{
-			showInfoBox(plugin, nextKind, nextTitle, nextStart, nextEnd);
+			showInfoBox(plugin, nextKind, nextTitle, nextStart, nextEnd, nextLoc, nextBoss);
+			marker.show(nextLoc, nextTitle);
 		}
 		else
 		{
@@ -192,19 +213,31 @@ public class LfgReminder
 		}
 	}
 
-	private void showInfoBox(Plugin plugin, String kind, String title, Instant startsAt, Instant endsAt)
+	private void showInfoBox(Plugin plugin, String kind, String title, Instant startsAt, Instant endsAt, Overview.Loc loc, int bossItemId)
 	{
 		if (infoBox == null)
 		{
-			final BufferedImage icon = ImageUtil.resizeImage(ImageUtil.loadImageResource(LfgReminder.class, "/icon.png"), 32, 32);
-			infoBox = new LfgInfoBox(icon, plugin);
+			infoBox = new LfgInfoBox(iconFor(bossItemId), plugin);
+			infoBoxItemId = bossItemId;
 			infoBoxManager.addInfoBox(infoBox);
 		}
-		infoBox.update(kind, title, startsAt, endsAt);
+		else if (infoBoxItemId != bossItemId)
+		{
+			infoBox.setImage(iconFor(bossItemId));
+			infoBoxItemId = bossItemId;
+		}
+		infoBox.update(kind, title, startsAt, endsAt, loc == null ? null : loc.label());
+	}
+
+	/** The boss's pet icon when the title names a boss, otherwise the plugin's own icon. */
+	private BufferedImage iconFor(int bossItemId)
+	{
+		return bossItemId < 0 ? pluginIcon : itemManager.getImage(bossItemId);
 	}
 
 	private void removeInfoBox()
 	{
+		marker.clear();
 		if (infoBox != null)
 		{
 			infoBoxManager.removeInfoBox(infoBox);

@@ -14,6 +14,28 @@ public final class Overview
 	public static final Overview EMPTY = new Overview(null, 0, 0, Collections.emptyList(), Collections.emptyList(),
 		Collections.emptyList(), Collections.emptyList(), 0L, Collections.emptyList());
 
+	/** Where the group meets: OSRS tile coordinates, plane and an optional place name. */
+	public static final class Loc
+	{
+		public final int x;
+		public final int y;
+		public final int plane;
+		public final String name;
+
+		Loc(int x, int y, int plane, String name)
+		{
+			this.x = x;
+			this.y = y;
+			this.plane = plane;
+			this.name = name;
+		}
+
+		public String label()
+		{
+			return name == null || name.isEmpty() ? x + ", " + y : name;
+		}
+	}
+
 	public static final class Event
 	{
 		public final String id;
@@ -23,9 +45,11 @@ public final class Overview
 		public final Instant endsAt;
 		public final int going;
 		public final boolean mine;
+		public final Loc loc;
 
-		Event(String id, String title, Instant startsAt, Instant endsAt, int going, boolean mine)
+		Event(String id, String title, Instant startsAt, Instant endsAt, int going, boolean mine, Loc loc)
 		{
+			this.loc = loc;
 			this.id = id;
 			this.title = title;
 			this.startsAt = startsAt;
@@ -44,9 +68,11 @@ public final class Overview
 		public final int capacity;
 		public final int taken;
 		public final boolean mine;
+		public final Loc loc;
 
-		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine)
+		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, Loc loc)
 		{
+			this.loc = loc;
 			this.id = id;
 			this.title = title;
 			this.activity = activity;
@@ -77,12 +103,16 @@ public final class Overview
 		public final String id;
 		public final String title;
 		public final Instant startsAt;
+		public final String activity;
+		public final Loc loc;
 		public final String gearTitle;
 		public final List<GearItem> equipment;
 		public final List<GearItem> inventory;
 
-		MyLfg(String id, String title, Instant startsAt, String gearTitle, List<GearItem> equipment, List<GearItem> inventory)
+		MyLfg(String id, String title, String activity, Instant startsAt, Loc loc, String gearTitle, List<GearItem> equipment, List<GearItem> inventory)
 		{
+			this.activity = activity;
+			this.loc = loc;
 			this.id = id;
 			this.title = title;
 			this.startsAt = startsAt;
@@ -162,7 +192,7 @@ public final class Overview
 			final JsonObject o = e.getAsJsonObject();
 			events.add(new Event(str(o, "id"), str(o, "title"), time(o, "startsAt"),
 				o.has("endsAt") && !o.get("endsAt").isJsonNull() ? time(o, "endsAt") : null, integer(o, "going"),
-				o.has("mine") && !o.get("mine").isJsonNull() && "YES".equals(o.get("mine").getAsString())));
+				o.has("mine") && !o.get("mine").isJsonNull() && "YES".equals(o.get("mine").getAsString()), loc(o)));
 		}
 
 		final List<Lfg> lfg = new ArrayList<>();
@@ -170,7 +200,7 @@ public final class Overview
 		{
 			final JsonObject o = e.getAsJsonObject();
 			lfg.add(new Lfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"),
-				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean()));
+				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean(), loc(o)));
 		}
 
 		final List<MyLfg> mine = new ArrayList<>();
@@ -178,7 +208,7 @@ public final class Overview
 		{
 			final JsonObject o = e.getAsJsonObject();
 			final JsonObject gear = o.has("gear") && o.get("gear").isJsonObject() ? o.getAsJsonObject("gear") : null;
-			mine.add(new MyLfg(str(o, "id"), str(o, "title"), time(o, "startsAt"),
+			mine.add(new MyLfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"), loc(o),
 				gear == null ? null : str(gear, "title"),
 				gear == null ? Collections.emptyList() : gearItems(array(gear, "equipment")),
 				gear == null ? Collections.emptyList() : gearItems(array(gear, "inventory"))));
@@ -200,6 +230,17 @@ public final class Overview
 
 		return new Overview(me.has("rsn") && !me.get("rsn").isJsonNull() ? me.get("rsn").getAsString() : null,
 			integer(me, "points"), integer(deaths, "month"), events, lfg, mine, goals, longValue(deaths, "valueLost"), shop);
+	}
+
+	private static Loc loc(JsonObject o)
+	{
+		if (!o.has("loc") || !o.get("loc").isJsonObject())
+		{
+			return null;
+		}
+
+		final JsonObject l = o.getAsJsonObject("loc");
+		return new Loc(integer(l, "x"), integer(l, "y"), integer(l, "plane"), l.has("name") && !l.get("name").isJsonNull() ? l.get("name").getAsString() : null);
 	}
 
 	private static List<GearItem> gearItems(JsonArray items)

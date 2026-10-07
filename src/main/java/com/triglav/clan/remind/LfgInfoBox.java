@@ -14,6 +14,7 @@ final class LfgInfoBox extends InfoBox
 	private volatile Instant endsAt;
 	private volatile String title = "";
 	private volatile String kind = "LFG";
+	private volatile String place = "";
 
 	LfgInfoBox(BufferedImage image, Plugin plugin)
 	{
@@ -21,8 +22,9 @@ final class LfgInfoBox extends InfoBox
 	}
 
 	/** @param endsAt when the thing ends, or null; while it runs the box counts down to this instead */
-	void update(String kind, String title, Instant startsAt, Instant endsAt)
+	void update(String kind, String title, Instant startsAt, Instant endsAt, String place)
 	{
+		this.place = place == null ? "" : place;
 		this.kind = kind;
 		this.title = title;
 		this.startsAt = startsAt;
@@ -60,6 +62,6 @@ final class LfgInfoBox extends InfoBox
 	@Override
 	public String getTooltip()
 	{
-		return kind + ": " + title + (running() ? " (v teku)" : "");
+		return kind + ": " + title + (running() ? " (v teku)" : "") + (place.isEmpty() ? "" : " · " + place);
 	}
 }

@@ -26,6 +26,23 @@ import okhttp3.Response;
 @Singleton
 public class LfgClient
 {
+	/** A meeting spot in OSRS tile coordinates. */
+	public static final class Place
+	{
+		public final int x;
+		public final int y;
+		public final int plane;
+		public final String name;
+
+		public Place(int x, int y, int plane, String name)
+		{
+			this.x = x;
+			this.y = y;
+			this.plane = plane;
+			this.name = name == null ? "" : name;
+		}
+	}
+
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
 	private final OkHttpClient httpClient;
@@ -42,6 +59,12 @@ public class LfgClient
 
 	/** @param setup the current gear in Inventory Setups shape, or null to post without a recommended setup */
 	public void create(String activity, String title, int inMinutes, int capacity, JsonObject setup, Consumer<String> onResult)
+	{
+		create(activity, title, inMinutes, capacity, setup, null, onResult);
+	}
+
+	/** @param place where the group meets (tile x, y, plane, optional name), or null for no location */
+	public void create(String activity, String title, int inMinutes, int capacity, JsonObject setup, Place place, Consumer<String> onResult)
 	{
 		final String key = keyStore.ingestKey();
 		if (key == null)
@@ -66,6 +89,16 @@ public class LfgClient
 			if (setup != null)
 			{
 				body.add("setup", setup);
+			}
+			if (place != null)
+			{
+				body.addProperty("locX", place.x);
+				body.addProperty("locY", place.y);
+				body.addProperty("locPlane", place.plane);
+				if (!place.name.isEmpty())
+				{
+					body.addProperty("locName", place.name);
+				}
 			}
 
 			try (Response response = httpClient.newCall(new Request.Builder().url(url).post(RequestBody.create(JSON, body.toString())).build()).execute())

@@ -63,12 +63,15 @@ public class TriglavPanel extends PluginPanel
 	/** activity, title, minutes until start, capacity, attach current setup */
 	public interface LfgSubmit
 	{
-		void accept(String activity, String title, int inMinutes, int capacity, boolean attachSetup);
+		/** @param place name for the meeting spot, or null for no location (the plugin uses the player's current tile) */
+		void accept(String activity, String title, int inMinutes, int capacity, boolean attachSetup, String place);
 	}
 
-	private LfgSubmit onCreateLfg = (activity, title, inMinutes, capacity, attachSetup) ->
+	private LfgSubmit onCreateLfg = (activity, title, inMinutes, capacity, attachSetup, place) ->
 	{
 	};
+	private final JCheckBox lfgUseLocation = new JCheckBox("zbor je tu, kjer stojim", false);
+	private final JTextField lfgPlace = new JTextField();
 	private final JTextField lfgActivity = new JTextField();
 	private final JTextField lfgTitle = new JTextField();
 	private static final String[] LFG_WHEN = {"čez 5 min", "čez 10 min", "čez 15 min", "čez 30 min", "čez 1 uro", "čez 2 uri"};
@@ -173,6 +176,16 @@ public class TriglavPanel extends PluginPanel
 		lfgCapacity.setAlignmentX(Component.LEFT_ALIGNMENT);
 		lfgCapacity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		content.add(lfgCapacity);
+		lfgUseLocation.setFont(FontManager.getDefaultFont());
+		lfgUseLocation.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		lfgUseLocation.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		lfgUseLocation.setAlignmentX(Component.LEFT_ALIGNMENT);
+		content.add(lfgUseLocation);
+		lfgPlace.setFont(FontManager.getDefaultFont());
+		lfgPlace.setAlignmentX(Component.LEFT_ALIGNMENT);
+		lfgPlace.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		lfgPlace.setToolTipText("Ime kraja (neobvezno), npr. Zul-Andra");
+		content.add(lfgPlace);
 		lfgAttachSetup.setFont(FontManager.getDefaultFont());
 		lfgAttachSetup.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		lfgAttachSetup.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -191,8 +204,11 @@ public class TriglavPanel extends PluginPanel
 
 			final String title = lfgTitle.getText().trim();
 			onCreateLfg.accept(activity, title.isEmpty() ? activity : title, LFG_MINUTES[lfgWhen.getSelectedIndex()],
-				((Number) lfgCapacity.getValue()).intValue(), lfgAttachSetup.isSelected());
+				((Number) lfgCapacity.getValue()).intValue(), lfgAttachSetup.isSelected(),
+				lfgUseLocation.isSelected() ? lfgPlace.getText().trim() : null);
 			lfgTitle.setText("");
+			lfgUseLocation.setSelected(false);
+			lfgPlace.setText("");
 		});
 		content.add(lfgButton);
 		content.add(Box.createVerticalStrut(4));
