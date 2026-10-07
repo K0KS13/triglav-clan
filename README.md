@@ -41,6 +41,9 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
   shop rewards you can buy with one click (titles and name colours stay on the site, they need a choice).
 - **Clan events on the minimap** — a countdown next to the minimap for clan events you signed up for (reminder in
   chat ten minutes before), and while any clan event is running (a BOTW or SOTW) a box with the time left.
+- **Post an LFG from the game** — *Nov LFG* in the panel: what, when (in 5 minutes to 2 hours), how many spots, and
+  optionally your current setup as the recommended gear. It goes to the clan's Discord with the join button, the same as a
+  post made on the website. At most three an hour.
 - **LFG reminders** — once you have joined an LFG, a chat reminder ten minutes before it starts, a check of what you
   carry against the setup the post recommends ("missing: Abyssal whip, Shark x2"), and a countdown next to the
   minimap from half an hour out. *Check gear for LFG* in the panel runs the same check on demand.

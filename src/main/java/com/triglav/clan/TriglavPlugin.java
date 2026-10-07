@@ -27,6 +27,7 @@ import com.triglav.clan.collect.SlayerSnapshot;
 import com.triglav.clan.collect.XpMilestoneTracker;
 import com.triglav.clan.feed.FeedClient;
 import com.triglav.clan.gear.GearClient;
+import com.triglav.clan.lfg.LfgClient;
 import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.ConfigClient;
 import com.triglav.clan.net.Envelope;
@@ -172,6 +173,9 @@ public class TriglavPlugin extends Plugin
 	private ShareClient shareClient;
 
 	@Inject
+	private LfgClient lfgClient;
+
+	@Inject
 	private LfgReminder lfgReminder;
 
 	private static final int AUTO_GEAR_DELAY_SECONDS = 30;
@@ -202,6 +206,7 @@ public class TriglavPlugin extends Plugin
 		panel.setOnSendGear(title -> gearClient.sendCurrentSetup(title, result -> chat("TRIGLAV: " + result)));
 		feedClient.setSink(this::showFeedMessage);
 		panel.setOnShare(this::shareWithClan);
+		panel.setOnCreateLfg(this::createLfg);
 		panel.setOnBuy(itemId -> overviewClient.buy(itemId, result -> chat("TRIGLAV: " + result)));
 		panel.setOnCheckGear(this::checkLfgGear);
 		overviewClient.setListener(overview -> panel.showOverview(overview, keyStore.isLinked()));
@@ -610,6 +615,25 @@ public class TriglavPlugin extends Plugin
 		}
 
 		captureScreenshot(png -> shareClient.share(text, png, result -> chat("TRIGLAV: " + result)));
+	}
+
+	/** Panel button: post an LFG from the game, optionally with the current setup as its recommended gear. */
+	private void createLfg(String activity, String title, int inMinutes, int capacity, boolean attachSetup)
+	{
+		if (!keyStore.isLinked())
+		{
+			chat("TRIGLAV: najprej poveži račun.");
+			return;
+		}
+
+		final java.util.function.Consumer<String> done = result -> chat("TRIGLAV: " + result);
+		if (!attachSetup)
+		{
+			lfgClient.create(activity, title, inMinutes, capacity, null, done);
+			return;
+		}
+
+		gearClient.captureSetup(title, setup -> lfgClient.create(activity, title, inMinutes, capacity, setup, done));
 	}
 
 	/** Panel button: compare what is carried with the setup of the next joined LFG. */

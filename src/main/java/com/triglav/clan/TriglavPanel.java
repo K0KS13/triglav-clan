@@ -10,6 +10,10 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Consumer;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.BorderFactory;
@@ -55,6 +59,23 @@ public class TriglavPanel extends PluginPanel
 	private Runnable onCheckGear = () ->
 	{
 	};
+
+	/** activity, title, minutes until start, capacity, attach current setup */
+	public interface LfgSubmit
+	{
+		void accept(String activity, String title, int inMinutes, int capacity, boolean attachSetup);
+	}
+
+	private LfgSubmit onCreateLfg = (activity, title, inMinutes, capacity, attachSetup) ->
+	{
+	};
+	private final JTextField lfgActivity = new JTextField();
+	private final JTextField lfgTitle = new JTextField();
+	private static final String[] LFG_WHEN = {"čez 5 min", "čez 10 min", "čez 15 min", "čez 30 min", "čez 1 uro", "čez 2 uri"};
+	private static final int[] LFG_MINUTES = {5, 10, 15, 30, 60, 120};
+	private final JComboBox<String> lfgWhen = new JComboBox<>(LFG_WHEN);
+	private final JSpinner lfgCapacity = new JSpinner(new SpinnerNumberModel(4, 2, 50, 1));
+	private final JCheckBox lfgAttachSetup = new JCheckBox("priloži moj trenutni setup", true);
 
 	/** Rebuilt on every overview refresh: today, goals, deaths, points and shop. */
 	private final JPanel live = new JPanel();
@@ -128,6 +149,56 @@ public class TriglavPanel extends PluginPanel
 		content.add(changeCodeButton);
 
 		content.add(spacer());
+		content.add(header("Nov LFG"));
+		lfgActivity.setFont(FontManager.getDefaultFont());
+		lfgActivity.setAlignmentX(Component.LEFT_ALIGNMENT);
+		lfgActivity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		lfgActivity.setToolTipText("Kaj (npr. Zulrah, ToA, Vorkath)");
+		content.add(note("Kaj gremo delat (npr. Zulrah):"));
+		content.add(lfgActivity);
+		content.add(Box.createVerticalStrut(4));
+		lfgTitle.setFont(FontManager.getDefaultFont());
+		lfgTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+		lfgTitle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		lfgTitle.setToolTipText("Naslov objave (neobvezno, sicer je enak kot aktivnost)");
+		content.add(note("Naslov (neobvezno):"));
+		content.add(lfgTitle);
+		content.add(Box.createVerticalStrut(4));
+		lfgWhen.setFont(FontManager.getDefaultFont());
+		lfgWhen.setAlignmentX(Component.LEFT_ALIGNMENT);
+		lfgWhen.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		content.add(lfgWhen);
+		content.add(Box.createVerticalStrut(4));
+		content.add(note("Število mest (z vodjem vred):"));
+		lfgCapacity.setAlignmentX(Component.LEFT_ALIGNMENT);
+		lfgCapacity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		content.add(lfgCapacity);
+		lfgAttachSetup.setFont(FontManager.getDefaultFont());
+		lfgAttachSetup.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		lfgAttachSetup.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		lfgAttachSetup.setAlignmentX(Component.LEFT_ALIGNMENT);
+		content.add(lfgAttachSetup);
+		content.add(Box.createVerticalStrut(4));
+		final JButton lfgButton = button("Objavi LFG");
+		lfgButton.addActionListener(e ->
+		{
+			final String activity = lfgActivity.getText().trim();
+			if (activity.length() < 2)
+			{
+				lfgActivity.requestFocusInWindow();
+				return;
+			}
+
+			final String title = lfgTitle.getText().trim();
+			onCreateLfg.accept(activity, title.isEmpty() ? activity : title, LFG_MINUTES[lfgWhen.getSelectedIndex()],
+				((Number) lfgCapacity.getValue()).intValue(), lfgAttachSetup.isSelected());
+			lfgTitle.setText("");
+		});
+		content.add(lfgButton);
+		content.add(Box.createVerticalStrut(4));
+		content.add(note("Objava gre v Discord klana z gumbom za pridružitev. Največ 3 na uro."));
+
+		content.add(spacer());
 		content.add(header("Povej klanu"));
 		shareText.setFont(FontManager.getDefaultFont());
 		shareText.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -181,6 +252,11 @@ public class TriglavPanel extends PluginPanel
 	public void setOnSendGear(Consumer<String> onSendGear)
 	{
 		this.onSendGear = onSendGear;
+	}
+
+	public void setOnCreateLfg(LfgSubmit onCreateLfg)
+	{
+		this.onCreateLfg = onCreateLfg;
 	}
 
 	public void setOnShare(Consumer<String> onShare)

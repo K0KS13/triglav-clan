@@ -79,19 +79,12 @@ public class GearClient
 
 		clientThread.invoke(() ->
 		{
-			final ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
-			final ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
-			if (equipment == null && inventory == null)
+			final JsonObject setup = buildSetup(title);
+			if (setup == null)
 			{
 				onResult.accept("setupa ni mogoče prebrati — prijavi se v igro.");
 				return;
 			}
-
-			final JsonObject setup = new JsonObject();
-			setup.add("inv", items(inventory, INVENTORY_SIZE));
-			setup.add("eq", items(equipment, EQUIPMENT_SIZE));
-			setup.addProperty("sb", client.getVarbitValue(Varbits.SPELLBOOK));
-			setup.addProperty("name", title);
 
 			final JsonObject payload = new JsonObject();
 			payload.addProperty("ingestKey", clanCode);
@@ -101,6 +94,30 @@ public class GearClient
 
 			executor.execute(() -> post(payload, onResult));
 		});
+	}
+
+	/** Client thread: the worn gear and inventory in the Inventory Setups shape, or null if not logged in. */
+	private JsonObject buildSetup(String title)
+	{
+		final ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+		final ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
+		if (equipment == null && inventory == null)
+		{
+			return null;
+		}
+
+		final JsonObject setup = new JsonObject();
+		setup.add("inv", items(inventory, INVENTORY_SIZE));
+		setup.add("eq", items(equipment, EQUIPMENT_SIZE));
+		setup.addProperty("sb", client.getVarbitValue(Varbits.SPELLBOOK));
+		setup.addProperty("name", title);
+		return setup;
+	}
+
+	/** Hands the current setup (or null when it cannot be read) to the callback, read on the client thread. */
+	public void captureSetup(String title, Consumer<JsonObject> onReady)
+	{
+		clientThread.invoke(() -> onReady.accept(buildSetup(title)));
 	}
 
 	private JsonArray items(ItemContainer container, int size)
