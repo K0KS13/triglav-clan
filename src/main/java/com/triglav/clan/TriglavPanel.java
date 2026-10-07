@@ -60,6 +60,10 @@ public class TriglavPanel extends PluginPanel
 	private final JPanel live = new JPanel();
 	private final JTextField shareText = new JTextField();
 
+	/** The link steps; hidden once linked, with a small button to bring them back to change the code. */
+	private final JPanel linkSection = new JPanel();
+	private final JButton changeCodeButton = new JButton("Zamenjaj kodo");
+
 	@Inject
 	private TriglavPanel()
 	{
@@ -85,25 +89,43 @@ public class TriglavPanel extends PluginPanel
 		content.add(live);
 
 		content.add(spacer());
-		content.add(header("Poveži račun"));
-		content.add(note("1. Na strani odpri svoj profil in klikni <b>Pokaži mojo kodo</b>."));
-		content.add(Box.createVerticalStrut(4));
+		linkSection.setLayout(new BoxLayout(linkSection, BoxLayout.Y_AXIS));
+		linkSection.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		linkSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+		linkSection.add(header("Poveži račun"));
+		linkSection.add(note("1. Na strani odpri svoj profil in klikni <b>Pokaži mojo kodo</b>."));
+		linkSection.add(Box.createVerticalStrut(4));
 		final JButton profileButton = button("Odpri moj profil na strani");
 		profileButton.addActionListener(e -> LinkBrowser.browse(PROFILE_URL));
-		content.add(profileButton);
-		content.add(Box.createVerticalStrut(6));
-		content.add(note("2. Kodo (TRG-XXXX) vpiši sem in klikni <b>Poveži</b>. Ista koda velja na vseh tvojih računalnikih."));
-		content.add(Box.createVerticalStrut(4));
+		linkSection.add(profileButton);
+		linkSection.add(Box.createVerticalStrut(6));
+		linkSection.add(note("2. Kodo (TRG-XXXX) vpiši sem in klikni <b>Poveži</b>. Ista koda velja na vseh tvojih računalnikih."));
+		linkSection.add(Box.createVerticalStrut(4));
 		codeField.setFont(FontManager.getDefaultFont());
 		codeField.setAlignmentX(Component.LEFT_ALIGNMENT);
 		codeField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		codeField.setToolTipText("TRG-XXXX");
 		codeField.addActionListener(e -> onLink.accept(codeField.getText().trim()));
-		content.add(codeField);
-		content.add(Box.createVerticalStrut(4));
+		linkSection.add(codeField);
+		linkSection.add(Box.createVerticalStrut(4));
 		final JButton linkButton = button("Poveži");
 		linkButton.addActionListener(e -> onLink.accept(codeField.getText().trim()));
-		content.add(linkButton);
+		linkSection.add(linkButton);
+
+		content.add(linkSection);
+
+		changeCodeButton.setFont(FontManager.getDefaultFont());
+		changeCodeButton.setFocusPainted(false);
+		changeCodeButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		changeCodeButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		changeCodeButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+		changeCodeButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		changeCodeButton.addActionListener(e ->
+		{
+			linkSection.setVisible(!linkSection.isVisible());
+			changeCodeButton.setText(linkSection.isVisible() ? "Skrij" : "Zamenjaj kodo");
+		});
+		content.add(changeCodeButton);
 
 		content.add(spacer());
 		content.add(header("Povej klanu"));
@@ -274,6 +296,9 @@ public class TriglavPanel extends PluginPanel
 	{
 		SwingUtilities.invokeLater(() ->
 		{
+			linkSection.setVisible(!linked);
+			changeCodeButton.setVisible(linked);
+			changeCodeButton.setText("Zamenjaj kodo");
 			if (!linked)
 			{
 				statusValue.setText("ni povezano");
