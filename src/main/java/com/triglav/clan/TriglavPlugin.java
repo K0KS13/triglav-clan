@@ -213,6 +213,7 @@ public class TriglavPlugin extends Plugin
 		panel.setOnCreateLfg(this::createLfg);
 		panel.setOnBuy(itemId -> overviewClient.buy(itemId, result -> chat("TRIGLAV: " + result)));
 		panel.setOnCheckGear(this::checkLfgGear);
+		panel.setOnJoinLfg((postId, leave) -> overviewClient.joinLfg(postId, leave, result -> chat("TRIGLAV: " + result)));
 		overviewClient.setListener(overview -> panel.showOverview(overview, keyStore.isLinked()));
 		bingoClient.setAnnouncer(message ->
 		{

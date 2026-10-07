@@ -71,11 +71,14 @@ public final class Overview
 		public final int capacity;
 		public final int taken;
 		public final boolean mine;
+		/** the poster; the poster cannot leave their own LFG */
+		public final boolean owner;
 		public final Loc loc;
 		public final String icon;
 
-		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, Loc loc, String icon)
+		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, boolean owner, Loc loc, String icon)
 		{
+			this.owner = owner;
 			this.loc = loc;
 			this.icon = icon;
 			this.id = id;
@@ -207,7 +210,8 @@ public final class Overview
 		{
 			final JsonObject o = e.getAsJsonObject();
 			lfg.add(new Lfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"),
-				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean(), loc(o), nullableStr(o, "icon")));
+				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean(),
+				o.has("owner") && o.get("owner").getAsBoolean(), loc(o), nullableStr(o, "icon")));
 		}
 
 		final List<MyLfg> mine = new ArrayList<>();

@@ -95,6 +95,51 @@ public class OverviewClient
 		}
 	}
 
+	/** Join (or, with leave=true, leave) an LFG; @param onResult human-readable result for the game chat */
+	public void joinLfg(String postId, boolean leave, Consumer<String> onResult)
+	{
+		final String key = keyStore.ingestKey();
+		if (key == null)
+		{
+			onResult.accept("najprej poveži račun.");
+			return;
+		}
+
+		executor.execute(() ->
+		{
+			final HttpUrl url = HttpUrl.parse(ApiClient.siteUrl() + "/api/plugin/lfg/" + key + "/join");
+			if (url == null)
+			{
+				return;
+			}
+
+			final JsonObject body = new JsonObject();
+			body.addProperty("postId", postId);
+			body.addProperty("leave", leave);
+			final Request request = new Request.Builder().url(url).post(RequestBody.create(JSON, body.toString())).build();
+
+			try (Response response = httpClient.newCall(request).execute())
+			{
+				final String raw = response.body() == null ? "" : response.body().string();
+				final JsonObject json = raw.isEmpty() ? new JsonObject() : new JsonParser().parse(raw).getAsJsonObject();
+				if (response.isSuccessful())
+				{
+					onResult.accept(json.has("message") ? json.get("message").getAsString() : "ok.");
+					refresh();
+				}
+				else
+				{
+					onResult.accept(json.has("error") ? json.get("error").getAsString() : "ni uspelo (HTTP " + response.code() + ").");
+				}
+			}
+			catch (IOException | RuntimeException e)
+			{
+				log.warn("LFG join failed", e);
+				onResult.accept("ni uspelo — stran ni dosegljiva.");
+			}
+		});
+	}
+
 	/** @param onResult human-readable result for the game chat */
 	public void buy(String itemId, Consumer<String> onResult)
 	{

@@ -47,6 +47,8 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
   *Nov LFG* form uses where you stand.
 - **Clan events on the minimap** — a countdown next to the minimap for clan events you signed up for (reminder in
   chat ten minutes before), and while any clan event is running (a BOTW or SOTW) a box with the time left.
+- **Join an LFG from the game** — the open LFG posts listed under *Danes* in the panel have a *Pridruži se* /
+  *Odjavi se* button, with the same rules as the website and Discord buttons (full posts and your own are not joinable).
 - **Post an LFG from the game** — *Nov LFG* in the panel: what, when (in 5 minutes to 2 hours), how many spots, and
   optionally your current setup as the recommended gear. It goes to the clan's Discord with the join button, the same as a
   post made on the website. At most three an hour.

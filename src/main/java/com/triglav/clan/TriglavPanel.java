@@ -56,6 +56,10 @@ public class TriglavPanel extends PluginPanel
 	private Consumer<String> onBuy = itemId ->
 	{
 	};
+	/** LFG id, true to leave */
+	private java.util.function.BiConsumer<String, Boolean> onJoinLfg = (id, leave) ->
+	{
+	};
 	private Runnable onCheckGear = () ->
 	{
 	};
@@ -280,6 +284,11 @@ public class TriglavPanel extends PluginPanel
 		this.onShare = onShare;
 	}
 
+	public void setOnJoinLfg(java.util.function.BiConsumer<String, Boolean> onJoinLfg)
+	{
+		this.onJoinLfg = onJoinLfg;
+	}
+
 	public void setOnBuy(Consumer<String> onBuy)
 	{
 		this.onBuy = onBuy;
@@ -320,7 +329,25 @@ public class TriglavPanel extends PluginPanel
 			}
 			for (Overview.Lfg l : o.lfg)
 			{
-				live.add(line(when(l.startsAt) + "  LFG " + l.title + "  · " + l.taken + "/" + l.capacity + (l.mine ? "  (si noter)" : "")));
+				live.add(line(when(l.startsAt) + "  LFG " + l.title + "  · " + l.taken + "/" + l.capacity + (l.mine ? "  (si noter)" : "")
+					+ (l.loc == null ? "" : "  · " + l.loc.label())));
+				if (l.owner)
+				{
+					continue;
+				}
+				if (l.mine)
+				{
+					final JButton leave = button("Odjavi se");
+					leave.addActionListener(e -> onJoinLfg.accept(l.id, true));
+					live.add(leave);
+				}
+				else if (l.taken < l.capacity)
+				{
+					final JButton join = button("Pridruži se");
+					join.addActionListener(e -> onJoinLfg.accept(l.id, false));
+					live.add(join);
+				}
+				live.add(Box.createVerticalStrut(3));
 			}
 		}
 
