@@ -36,6 +36,11 @@ public final class Envelope
 		envelope.addProperty("accountType", client.getAccountType().name());
 		envelope.addProperty("dinkAccountHash", Long.toString(client.getAccountHash()));
 		envelope.addProperty("world", client.getWorld());
+		final Player local = client.getLocalPlayer();
+		if (local != null && local.getWorldLocation() != null)
+		{
+			envelope.addProperty("regionId", local.getWorldLocation().getRegionID());
+		}
 		envelope.add("extra", extra == null ? new JsonObject() : extra);
 		return envelope;
 	}

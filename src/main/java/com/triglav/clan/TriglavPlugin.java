@@ -9,6 +9,7 @@ import com.triglav.clan.bingo.BingoOverlay;
 import com.triglav.clan.collect.ClanRankReporter;
 import com.triglav.clan.collect.ClueChat;
 import com.triglav.clan.collect.CollectionLogChat;
+import com.triglav.clan.collect.CollectionLogTotals;
 import com.triglav.clan.collect.CombatTaskTracker;
 import com.triglav.clan.collect.DeathTracker;
 import com.triglav.clan.collect.DiarySnapshot;
@@ -23,6 +24,7 @@ import com.triglav.clan.collect.SlayerChat;
 import com.triglav.clan.collect.Screenshot;
 import com.triglav.clan.collect.SkillSnapshot;
 import com.triglav.clan.collect.SlayerSnapshot;
+import com.triglav.clan.collect.XpMilestoneTracker;
 import com.triglav.clan.feed.FeedClient;
 import com.triglav.clan.gear.GearClient;
 import com.triglav.clan.net.ApiClient;
@@ -131,6 +133,9 @@ public class TriglavPlugin extends Plugin
 	private LevelTracker levelTracker;
 
 	@Inject
+	private XpMilestoneTracker xpMilestoneTracker;
+
+	@Inject
 	private CombatTaskTracker combatTaskTracker;
 
 	@Inject
@@ -237,9 +242,19 @@ public class TriglavPlugin extends Plugin
 		final String clogItem = CollectionLogChat.newItemName(event);
 		if (clogItem != null)
 		{
-			final JsonObject extra = new JsonObject();
-			extra.addProperty("itemName", clogItem);
-			apiClient.send(Envelope.create(client, "COLLECTION", extra), null);
+			// The log counters update a tick after the message; the site draws its progress bar from them.
+			clientThread.invokeLater(() ->
+			{
+				final JsonObject extra = new JsonObject();
+				extra.addProperty("itemName", clogItem);
+				final JsonObject progress = CollectionLogTotals.snapshot(client);
+				if (progress != null)
+				{
+					extra.addProperty("completedEntries", progress.get("completed").getAsInt());
+					extra.addProperty("totalEntries", progress.get("total").getAsInt());
+				}
+				apiClient.send(Envelope.create(client, "COLLECTION", extra), null);
+			});
 		}
 
 		final JsonObject clue = ClueChat.parse(event);
@@ -273,6 +288,7 @@ public class TriglavPlugin extends Plugin
 	public void onStatChanged(StatChanged event)
 	{
 		levelTracker.onStatChanged(event);
+		xpMilestoneTracker.onStatChanged(event);
 	}
 
 	@Subscribe
@@ -291,6 +307,10 @@ public class TriglavPlugin extends Plugin
 		}
 
 		final String title = questTracker.title(client);
+		if (questTracker.isPartial(title))
+		{
+			return;
+		}
 		clientThread.invokeLater(() ->
 			apiClient.send(Envelope.create(client, "QUEST", questTracker.build(client, title)), null));
 	}
@@ -398,6 +418,12 @@ public class TriglavPlugin extends Plugin
 			apiClient.send(Envelope.create(client, "LEVEL", levelExtra), null);
 		}
 
+		final JsonObject xpExtra = xpMilestoneTracker.onGameTick();
+		if (xpExtra != null)
+		{
+			apiClient.send(Envelope.create(client, "XP_MILESTONE", xpExtra), null);
+		}
+
 		final JsonObject killCountExtra = killCountTracker.onGameTick();
 		if (killCountExtra != null)
 		{
@@ -418,11 +444,17 @@ public class TriglavPlugin extends Plugin
 	{
 		// The level-up tracker needs a baseline: StatChanged fires for every skill right after login.
 		levelTracker.prime(client);
+		xpMilestoneTracker.prime(client);
 
 		final JsonObject extra = new JsonObject();
 		extra.add("skills", SkillSnapshot.build(client));
 		extra.add("slayer", SlayerSnapshot.build(client));
 		extra.add("achievementDiary", DiarySnapshot.build(client));
+		final JsonObject collectionLog = CollectionLogTotals.snapshot(client);
+		if (collectionLog != null)
+		{
+			extra.add("collectionLog", collectionLog);
+		}
 		apiClient.send(Envelope.create(client, "LOGIN", extra), null);
 		log.debug("TRIGLAV: sent LOGIN snapshot");
 	}
@@ -435,6 +467,7 @@ public class TriglavPlugin extends Plugin
 
 		// Half-finished state must not carry over to the next character or world.
 		levelTracker.reset();
+		xpMilestoneTracker.reset();
 		killCountTracker.reset();
 		slayerChat.reset();
 		playerKillTracker.reset();

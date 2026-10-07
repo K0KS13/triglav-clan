@@ -29,7 +29,9 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
 - **Slayer** — task streak and slayer points on every login, plus a `SLAYER` event with the finished task and
   your running task total when a slayer master hands out points.
 - **Achievement diary** — how many diary tiers are complete, on every login.
-- **Collection log** — a `COLLECTION` event the moment a new item unlocks.
+- **Collection log** — a `COLLECTION` event the moment a new item unlocks, with your log progress (`n / total`) read
+  from the same counters the log's header uses; the login snapshot carries it too, once the client knows it.
+- **XP milestones** — an `XP_MILESTONE` each time a skill passes another 50M XP.
 - **Pets** — a `PET` event when a pet is unlocked (name read off the NPC that spawns next to you).
 - **Deaths** — an approximate GP value lost, from the equipment+inventory value just before and just after death.
 - **Bingo board** — during an active clan bingo, your team's board as an in-game overlay (green = approved,
@@ -37,12 +39,12 @@ account to the clan site — no webhook URLs to copy, unlike Dink.
 - **Gear setup** — *Pošlji trenutni setup na stran* in the panel sends your worn equipment, inventory and
   spellbook to the site's gear builder and prints the link in chat.
 
-## Not implemented yet
+## Not implemented
 
-Collection log **totals** (`completed`/`total`) are not sent. The site can display them (same JSON shape as
-[Dink](https://github.com/pajlads/DinkPlugin)), but reading them means parsing the collection log overview
-widget, and a wrong number there would silently skew the site's automatic rank recommendations. See
-`DECISIONS.md` — every API name used here was checked against the actual `runelite-api` jar, not memory.
+- **Drop rarity** (`1/N` next to a drop): needs the drop-rate tables Dink ships and maintains.
+- **Pet name from the game**: there is no reliable source in the API, so it is still read off the NPC that spawns next to you.
+- **Region names** on deaths: `regionId` is now sent with every event, but the API has no ID → name table.
+- **Group storage contents**: nothing on the site reads it.
 
 ## Configuration
 

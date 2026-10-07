@@ -1,6 +1,7 @@
 package com.triglav.clan.collect;
 
 import com.google.gson.JsonObject;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Singleton;
@@ -24,6 +25,17 @@ public class QuestTracker
 	private static final Pattern COMPLETED_LAST = Pattern.compile("'?(?<quest>.+?)'? (?:quest )?completed[!.]?$", Pattern.CASE_INSENSITIVE);
 
 	public static final int WIDGET_GROUP = InterfaceID.QUESTSCROLL;
+
+	/** Scroll wording that does not follow the usual pattern (same cases Dink special-cases). */
+	private static final Map<String, String> RENAMED = Map.of(
+		"Lumbridge Cook... again", "Another Cook's Quest",
+		"Skrach 'Bone Crusher' Uglogwee", "Skrach Uglogwee");
+
+	/** "You have kind of completed..." is a partial step, not a finished quest. */
+	public boolean isPartial(String title)
+	{
+		return title != null && title.contains("kind of");
+	}
 
 	/** @return the quest scroll's title, or null when it isn't loaded */
 	public String title(Client client)
@@ -73,12 +85,15 @@ public class QuestTracker
 		}
 
 		final Matcher first = COMPLETED_FIRST.matcher(title);
-		if (first.matches())
-		{
-			return first.group("quest").trim();
-		}
-
 		final Matcher last = COMPLETED_LAST.matcher(title);
-		return last.matches() ? last.group("quest").trim() : title;
+		final String name = first.matches() ? first.group("quest").trim()
+			: last.matches() ? last.group("quest").trim() : title;
+		return normalise(name, title);
+	}
+
+	/** A partial completion ("...kind of...") is not a finished quest; a few titles read differently from the quest name. */
+	static String normalise(String name, String scrollTitle)
+	{
+		return scrollTitle.contains("kind of") ? null : RENAMED.getOrDefault(name, name);
 	}
 }
