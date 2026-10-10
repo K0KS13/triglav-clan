@@ -48,6 +48,8 @@ public class LfgClient
 	private final OkHttpClient httpClient;
 	private final KeyStore keyStore;
 	private final ScheduledExecutorService executor;
+	/** The character being played, so the post shows its RSN as the organiser. */
+	private volatile String rsn;
 
 	@Inject
 	private LfgClient(OkHttpClient httpClient, KeyStore keyStore, ScheduledExecutorService executor)
@@ -55,6 +57,11 @@ public class LfgClient
 		this.httpClient = httpClient;
 		this.keyStore = keyStore;
 		this.executor = executor;
+	}
+
+	public void setRsn(String rsn)
+	{
+		this.rsn = rsn;
 	}
 
 	/** @param setup the current gear in Inventory Setups shape, or null to post without a recommended setup */
@@ -86,6 +93,10 @@ public class LfgClient
 			body.addProperty("title", title);
 			body.addProperty("inMinutes", inMinutes);
 			body.addProperty("capacity", capacity);
+			if (rsn != null)
+			{
+				body.addProperty("rsn", rsn);
+			}
 			if (setup != null)
 			{
 				body.add("setup", setup);

@@ -464,6 +464,13 @@ public class TriglavPlugin extends Plugin
 		final String name = Envelope.playerName(client);
 		if (name != null)
 		{
+			if (!name.equals(lastPlayerName))
+			{
+				// LFG is per RSN: tell the clients which character plays (also after switching accounts)
+				overviewClient.setRsn(name);
+				lfgClient.setRsn(name);
+				overviewClient.refreshNow();
+			}
 			lastPlayerName = name;
 			if (loginPending)
 			{

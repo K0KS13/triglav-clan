@@ -35,6 +35,8 @@ public class OverviewClient
 	private final KeyStore keyStore;
 	private final ScheduledExecutorService executor;
 	private final AtomicReference<Overview> current = new AtomicReference<>(Overview.EMPTY);
+	/** The character being played: LFG state and joins are per RSN, one Discord user can have several accounts. */
+	private volatile String rsn;
 	private volatile Consumer<Overview> listener = overview ->
 	{
 	};
@@ -58,6 +60,11 @@ public class OverviewClient
 		this.listener = listener;
 	}
 
+	public void setRsn(String rsn)
+	{
+		this.rsn = rsn;
+	}
+
 	public void refreshNow()
 	{
 		executor.execute(this::refresh);
@@ -72,11 +79,13 @@ public class OverviewClient
 			return;
 		}
 
-		final HttpUrl url = HttpUrl.parse(ApiClient.siteUrl() + "/api/plugin/overview/" + key);
-		if (url == null)
+		final HttpUrl base = HttpUrl.parse(ApiClient.siteUrl() + "/api/plugin/overview/" + key);
+		if (base == null)
 		{
 			return;
 		}
+
+		final HttpUrl url = rsn == null ? base : base.newBuilder().addQueryParameter("rsn", rsn).build();
 
 		try (Response response = httpClient.newCall(new Request.Builder().url(url).build()).execute())
 		{
@@ -116,6 +125,10 @@ public class OverviewClient
 			final JsonObject body = new JsonObject();
 			body.addProperty("postId", postId);
 			body.addProperty("leave", leave);
+			if (rsn != null)
+			{
+				body.addProperty("rsn", rsn);
+			}
 			final Request request = new Request.Builder().url(url).post(RequestBody.create(JSON, body.toString())).build();
 
 			try (Response response = httpClient.newCall(request).execute())
