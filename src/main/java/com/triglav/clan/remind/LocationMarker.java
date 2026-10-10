@@ -62,6 +62,7 @@ public class LocationMarker
 		point = WorldMapPoint.builder()
 			.worldPoint(target)
 			.image(pin)
+			.name(label)
 			.tooltip(label + " · " + loc.label())
 			.snapToEdge(true)
 			.jumpOnClick(true)
