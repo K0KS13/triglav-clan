@@ -17,8 +17,7 @@ public class OverviewTest
 			+ "\"lfg\":[{\"id\":\"l1\",\"title\":\"ToA\",\"activity\":\"ToA\",\"startsAt\":\"2026-10-07T19:00:00.000Z\",\"capacity\":4,\"taken\":2,\"mine\":false}],"
 			+ "\"myLfg\":[],"
 			+ "\"goals\":[{\"id\":\"g\",\"title\":\"10k Vorkath\",\"boss\":\"Vorkath\",\"target\":10000,\"current\":2500,\"done\":false}],"
-			+ "\"deaths\":{\"month\":3,\"valueLost\":4500000},"
-			+ "\"shop\":[{\"id\":\"s1\",\"name\":\"Srecka\",\"cost\":50,\"affordable\":true}]}").getAsJsonObject());
+			+ "\"deaths\":{\"month\":3,\"valueLost\":4500000}}").getAsJsonObject());
 
 		assertEquals("K0KS", o.rsn);
 		assertEquals(246, o.points);
@@ -31,7 +30,6 @@ public class OverviewTest
 		assertEquals(2500, o.goals.get(0).current);
 		assertEquals(3, o.deathsThisMonth);
 		assertEquals(4_500_000L, o.valueLostThisMonth);
-		assertTrue(o.shop.get(0).affordable);
 	}
 
 	@Test
@@ -39,6 +37,6 @@ public class OverviewTest
 	{
 		final Overview o = Overview.parse(new JsonParser().parse("{}").getAsJsonObject());
 		assertEquals(null, o.rsn);
-		assertTrue(o.events.isEmpty() && o.lfg.isEmpty() && o.myLfg.isEmpty() && o.goals.isEmpty() && o.shop.isEmpty());
+		assertTrue(o.events.isEmpty() && o.lfg.isEmpty() && o.myLfg.isEmpty() && o.goals.isEmpty());
 	}
 }

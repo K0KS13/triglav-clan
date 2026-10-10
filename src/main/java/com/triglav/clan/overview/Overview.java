@@ -12,7 +12,7 @@ import java.util.List;
 public final class Overview
 {
 	public static final Overview EMPTY = new Overview(null, 0, 0, Collections.emptyList(), Collections.emptyList(),
-		Collections.emptyList(), Collections.emptyList(), 0L, Collections.emptyList());
+		Collections.emptyList(), Collections.emptyList(), 0L);
 
 	/** Where the group meets: OSRS tile coordinates, plane and an optional place name. */
 	public static final class Loc
@@ -151,22 +151,6 @@ public final class Overview
 		}
 	}
 
-	public static final class ShopItem
-	{
-		public final String id;
-		public final String name;
-		public final int cost;
-		public final boolean affordable;
-
-		ShopItem(String id, String name, int cost, boolean affordable)
-		{
-			this.id = id;
-			this.name = name;
-			this.cost = cost;
-			this.affordable = affordable;
-		}
-	}
-
 	public final String rsn;
 	public final int points;
 	public final int deathsThisMonth;
@@ -175,10 +159,9 @@ public final class Overview
 	public final List<Lfg> lfg;
 	public final List<MyLfg> myLfg;
 	public final List<Goal> goals;
-	public final List<ShopItem> shop;
 
 	private Overview(String rsn, int points, int deathsThisMonth, List<Event> events, List<Lfg> lfg, List<MyLfg> myLfg,
-		List<Goal> goals, long valueLostThisMonth, List<ShopItem> shop)
+		List<Goal> goals, long valueLostThisMonth)
 	{
 		this.rsn = rsn;
 		this.points = points;
@@ -188,7 +171,6 @@ public final class Overview
 		this.myLfg = myLfg;
 		this.goals = goals;
 		this.valueLostThisMonth = valueLostThisMonth;
-		this.shop = shop;
 	}
 
 	public static Overview parse(JsonObject body)
@@ -232,15 +214,9 @@ public final class Overview
 			goals.add(new Goal(str(o, "title"), integer(o, "current"), integer(o, "target")));
 		}
 
-		final List<ShopItem> shop = new ArrayList<>();
-		for (JsonElement e : array(body, "shop"))
-		{
-			final JsonObject o = e.getAsJsonObject();
-			shop.add(new ShopItem(str(o, "id"), str(o, "name"), integer(o, "cost"), o.has("affordable") && o.get("affordable").getAsBoolean()));
-		}
 
 		return new Overview(me.has("rsn") && !me.get("rsn").isJsonNull() ? me.get("rsn").getAsString() : null,
-			integer(me, "points"), integer(deaths, "month"), events, lfg, mine, goals, longValue(deaths, "valueLost"), shop);
+			integer(me, "points"), integer(deaths, "month"), events, lfg, mine, goals, longValue(deaths, "valueLost"));
 	}
 
 	private static String nullableStr(JsonObject o, String key)

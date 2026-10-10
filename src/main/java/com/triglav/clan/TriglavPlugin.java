@@ -215,7 +215,6 @@ public class TriglavPlugin extends Plugin
 		feedClient.setSink(this::showFeedMessage);
 		panel.setOnShare(this::shareWithClan);
 		panel.setOnCreateLfg(this::createLfg);
-		panel.setOnBuy(itemId -> overviewClient.buy(itemId, result -> chat("TRIGLAV: " + result)));
 		panel.setOnCheckGear(this::checkLfgGear);
 		panel.setOnJoinLfg((postId, leave) -> overviewClient.joinLfg(postId, leave, result -> chat("TRIGLAV: " + result)));
 		overviewClient.setListener(overview -> panel.showOverview(overview, keyStore.isLinked()));

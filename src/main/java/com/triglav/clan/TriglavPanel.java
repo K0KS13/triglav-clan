@@ -53,9 +53,6 @@ public class TriglavPanel extends PluginPanel
 	private Consumer<String> onShare = text ->
 	{
 	};
-	private Consumer<String> onBuy = itemId ->
-	{
-	};
 	/** LFG id, true to leave */
 	private java.util.function.BiConsumer<String, Boolean> onJoinLfg = (id, leave) ->
 	{
@@ -84,7 +81,7 @@ public class TriglavPanel extends PluginPanel
 	private final JSpinner lfgCapacity = new JSpinner(new SpinnerNumberModel(4, 2, 50, 1));
 	private final JCheckBox lfgAttachSetup = new JCheckBox("priloži moj trenutni setup", true);
 
-	/** Rebuilt on every overview refresh: today, goals, deaths, points and shop. */
+	/** Rebuilt on every overview refresh: today, goals, deaths and points. */
 	private final JPanel live = new JPanel();
 	private final JTextField shareText = new JTextField();
 
@@ -95,11 +92,14 @@ public class TriglavPanel extends PluginPanel
 	@Inject
 	private TriglavPanel()
 	{
-		super(false);
+		// Wrapped (default) panel: RuneLite puts it in a fixed-width scroll pane and caps the minimum size, so a tall
+		// panel scrolls instead of forcing the game client window to resize. Content goes into the wrapped panel.
+		super();
 
-		setLayout(new BorderLayout());
-		setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		final JPanel root = getWrappedPanel();
+		root.setLayout(new BorderLayout());
+		root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		root.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		final JPanel content = new JPanel();
 		content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -261,7 +261,7 @@ public class TriglavPanel extends PluginPanel
 		siteButton.addActionListener(e -> LinkBrowser.browse(SITE_URL));
 		content.add(siteButton);
 
-		add(content, BorderLayout.NORTH);
+		root.add(content, BorderLayout.NORTH);
 	}
 
 	public void setOnLink(Consumer<String> onLink)
@@ -287,11 +287,6 @@ public class TriglavPanel extends PluginPanel
 	public void setOnJoinLfg(java.util.function.BiConsumer<String, Boolean> onJoinLfg)
 	{
 		this.onJoinLfg = onJoinLfg;
-	}
-
-	public void setOnBuy(Consumer<String> onBuy)
-	{
-		this.onBuy = onBuy;
 	}
 
 	public void setOnCheckGear(Runnable onCheckGear)
@@ -372,22 +367,6 @@ public class TriglavPanel extends PluginPanel
 		live.add(spacer());
 		live.add(header("Smrti ta mesec"));
 		live.add(line(o.deathsThisMonth == 0 ? "ni jih" : o.deathsThisMonth + "× · izgubljeno " + gp(o.valueLostThisMonth)));
-
-		if (!o.shop.isEmpty())
-		{
-			live.add(spacer());
-			live.add(header("Trgovina"));
-			for (Overview.ShopItem item : o.shop)
-			{
-				final JButton buy = button(item.name + " · " + item.cost);
-				buy.setEnabled(item.affordable);
-				buy.setToolTipText(item.affordable ? "Kupi (vodstvo potrdi)" : "Premalo točk");
-				buy.addActionListener(e -> onBuy.accept(item.id));
-				live.add(buy);
-				live.add(Box.createVerticalStrut(3));
-			}
-			live.add(note("Nazive in barve izbereš na strani."));
-		}
 	}
 
 	private static String when(Instant at)
