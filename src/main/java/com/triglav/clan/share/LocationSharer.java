@@ -3,6 +3,7 @@ package com.triglav.clan.share;
 import com.google.gson.JsonObject;
 import com.triglav.clan.TriglavConfig;
 import com.triglav.clan.net.ApiClient;
+import com.triglav.clan.net.Envelope;
 import com.triglav.clan.net.KeyStore;
 import java.io.IOException;
 import java.util.Set;
@@ -44,6 +45,8 @@ public class LocationSharer
 
 	private int ticks;
 	private boolean sentSomething;
+	/** RSN of the last position sent, so clearing withdraws that character only. */
+	private volatile String sentRsn;
 
 	@Inject
 	private LocationSharer(Client client, TriglavConfig config, KeyStore keyStore, OkHttpClient httpClient, ScheduledExecutorService executor)
@@ -82,6 +85,13 @@ public class LocationSharer
 		body.addProperty("y", here.getY());
 		body.addProperty("plane", here.getPlane());
 		body.addProperty("world", client.getWorld());
+		// the character being played: one Discord user can have several accounts, each shows on the map
+		final String name = Envelope.playerName(client);
+		if (name != null)
+		{
+			body.addProperty("rsn", name);
+		}
+		sentRsn = name;
 		sentSomething = true;
 		post(body);
 	}
@@ -98,6 +108,10 @@ public class LocationSharer
 		sentSomething = false;
 		final JsonObject body = new JsonObject();
 		body.addProperty("clear", true);
+		if (sentRsn != null)
+		{
+			body.addProperty("rsn", sentRsn);
+		}
 		post(body);
 	}
 
