@@ -4,12 +4,17 @@ import com.triglav.clan.overview.Overview;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.BasicStroke;
 import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Consumer;
+import javax.swing.Icon;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JSpinner;
@@ -71,7 +76,7 @@ public class TriglavPanel extends PluginPanel
 	private LfgSubmit onCreateLfg = (activity, title, inMinutes, capacity, attachSetup, place) ->
 	{
 	};
-	private final JCheckBox lfgUseLocation = new JCheckBox("zbor je tu, kjer stojim", false);
+	private final JCheckBox lfgUseLocation = checkbox("zbor je tu, kjer stojim", false);
 	private final JTextField lfgPlace = new JTextField();
 	private final JTextField lfgActivity = new JTextField();
 	private final JTextField lfgTitle = new JTextField();
@@ -79,7 +84,7 @@ public class TriglavPanel extends PluginPanel
 	private static final int[] LFG_MINUTES = {5, 10, 15, 30, 60, 120};
 	private final JComboBox<String> lfgWhen = new JComboBox<>(LFG_WHEN);
 	private final JSpinner lfgCapacity = new JSpinner(new SpinnerNumberModel(4, 2, 50, 1));
-	private final JCheckBox lfgAttachSetup = new JCheckBox("priloži moj trenutni setup", true);
+	private final JCheckBox lfgAttachSetup = checkbox("priloži moj trenutni setup", true);
 
 	/** Rebuilt on every overview refresh: today, goals, deaths and points. */
 	private final JPanel live = new JPanel();
@@ -179,9 +184,6 @@ public class TriglavPanel extends PluginPanel
 		lfgCapacity.setAlignmentX(Component.LEFT_ALIGNMENT);
 		lfgCapacity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		content.add(lfgCapacity);
-		lfgUseLocation.setFont(FontManager.getDefaultFont());
-		lfgUseLocation.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		lfgUseLocation.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		lfgUseLocation.setAlignmentX(Component.LEFT_ALIGNMENT);
 		content.add(lfgUseLocation);
 		lfgPlace.setFont(FontManager.getDefaultFont());
@@ -189,9 +191,6 @@ public class TriglavPanel extends PluginPanel
 		lfgPlace.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		lfgPlace.setToolTipText("Ime kraja (neobvezno), npr. Zul-Andra");
 		content.add(lfgPlace);
-		lfgAttachSetup.setFont(FontManager.getDefaultFont());
-		lfgAttachSetup.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		lfgAttachSetup.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		lfgAttachSetup.setAlignmentX(Component.LEFT_ALIGNMENT);
 		content.add(lfgAttachSetup);
 		content.add(Box.createVerticalStrut(4));
@@ -437,6 +436,64 @@ public class TriglavPanel extends PluginPanel
 		button.setAlignmentX(Component.LEFT_ALIGNMENT);
 		button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 		return button;
+	}
+
+	/**
+	 * Check box with an explicit box icon: the default Swing one is dark on RuneLite's dark background, so the tick is
+	 * barely visible. This draws a light border and an orange tick.
+	 */
+	private static JCheckBox checkbox(String text, boolean selected)
+	{
+		final JCheckBox box = new JCheckBox(text, selected);
+		box.setIcon(new BoxIcon(false));
+		box.setSelectedIcon(new BoxIcon(true));
+		box.setFont(FontManager.getDefaultFont());
+		box.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		box.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		box.setFocusPainted(false);
+		box.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return box;
+	}
+
+	private static final class BoxIcon implements Icon
+	{
+		private static final int SIZE = 14;
+		private final boolean checked;
+
+		BoxIcon(boolean checked)
+		{
+			this.checked = checked;
+		}
+
+		@Override
+		public void paintIcon(Component c, Graphics g, int x, int y)
+		{
+			final Graphics2D g2 = (Graphics2D) g.create();
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2.setColor(ColorScheme.DARKER_GRAY_COLOR);
+			g2.fillRect(x, y, SIZE, SIZE);
+			g2.setColor(checked ? ColorScheme.BRAND_ORANGE : ColorScheme.LIGHT_GRAY_COLOR);
+			g2.drawRect(x, y, SIZE - 1, SIZE - 1);
+			if (checked)
+			{
+				g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				g2.drawLine(x + 3, y + 7, x + 6, y + 10);
+				g2.drawLine(x + 6, y + 10, x + 11, y + 3);
+			}
+			g2.dispose();
+		}
+
+		@Override
+		public int getIconWidth()
+		{
+			return SIZE;
+		}
+
+		@Override
+		public int getIconHeight()
+		{
+			return SIZE;
+		}
 	}
 
 	private static Component spacer()
