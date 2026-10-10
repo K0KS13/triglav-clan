@@ -92,14 +92,13 @@ public class TriglavPanel extends PluginPanel
 	@Inject
 	private TriglavPanel()
 	{
-		// Wrapped (default) panel: RuneLite puts it in a fixed-width scroll pane and caps the minimum size, so a tall
-		// panel scrolls instead of forcing the game client window to resize. Content goes into the wrapped panel.
+		// Wrapped (default) PluginPanel: RuneLite puts this panel into a scroll pane inside a fixed-size outer wrapper,
+		// so a tall panel scrolls instead of forcing the game client window to grow. Content goes into this panel itself.
 		super();
 
-		final JPanel root = getWrappedPanel();
-		root.setLayout(new BorderLayout());
-		root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-		root.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		setLayout(new BorderLayout());
+		setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		final JPanel content = new JPanel();
 		content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -261,7 +260,7 @@ public class TriglavPanel extends PluginPanel
 		siteButton.addActionListener(e -> LinkBrowser.browse(SITE_URL));
 		content.add(siteButton);
 
-		root.add(content, BorderLayout.NORTH);
+		add(content, BorderLayout.NORTH);
 	}
 
 	public void setOnLink(Consumer<String> onLink)
