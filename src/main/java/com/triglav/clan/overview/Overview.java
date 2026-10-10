@@ -75,9 +75,12 @@ public final class Overview
 		public final boolean owner;
 		public final Loc loc;
 		public final String icon;
+		/** who is in, the poster first, by RSN */
+		public final List<String> members;
 
-		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, boolean owner, Loc loc, String icon)
+		Lfg(String id, String title, String activity, Instant startsAt, int capacity, int taken, boolean mine, boolean owner, Loc loc, String icon, List<String> members)
 		{
+			this.members = members;
 			this.owner = owner;
 			this.loc = loc;
 			this.icon = icon;
@@ -193,7 +196,7 @@ public final class Overview
 			final JsonObject o = e.getAsJsonObject();
 			lfg.add(new Lfg(str(o, "id"), str(o, "title"), str(o, "activity"), time(o, "startsAt"),
 				integer(o, "capacity"), integer(o, "taken"), o.has("mine") && o.get("mine").getAsBoolean(),
-				o.has("owner") && o.get("owner").getAsBoolean(), loc(o), nullableStr(o, "icon")));
+				o.has("owner") && o.get("owner").getAsBoolean(), loc(o), nullableStr(o, "icon"), strings(o, "members")));
 		}
 
 		final List<MyLfg> mine = new ArrayList<>();
@@ -217,6 +220,19 @@ public final class Overview
 
 		return new Overview(me.has("rsn") && !me.get("rsn").isJsonNull() ? me.get("rsn").getAsString() : null,
 			integer(me, "points"), integer(deaths, "month"), events, lfg, mine, goals, longValue(deaths, "valueLost"));
+	}
+
+	private static List<String> strings(JsonObject o, String key)
+	{
+		final List<String> out = new ArrayList<>();
+		for (JsonElement e : array(o, key))
+		{
+			if (e.isJsonPrimitive())
+			{
+				out.add(e.getAsString());
+			}
+		}
+		return out;
 	}
 
 	private static String nullableStr(JsonObject o, String key)

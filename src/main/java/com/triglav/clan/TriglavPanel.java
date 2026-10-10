@@ -88,6 +88,9 @@ public class TriglavPanel extends PluginPanel
 
 	/** Rebuilt on every overview refresh: today, goals, deaths and points. */
 	private final JPanel live = new JPanel();
+	/** The LFG posts the member leads or has joined, with who is in; sits right above the new-LFG form. */
+	private final JPanel myLfgBox = new JPanel();
+	private final JLabel lfgStatus = new JLabel(" ");
 	private final JTextField shareText = new JTextField();
 
 	/** The link steps; hidden once linked, with a small button to bring them back to change the code. */
@@ -160,6 +163,10 @@ public class TriglavPanel extends PluginPanel
 		content.add(changeCodeButton);
 
 		content.add(spacer());
+		myLfgBox.setLayout(new BoxLayout(myLfgBox, BoxLayout.Y_AXIS));
+		myLfgBox.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		myLfgBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+		content.add(myLfgBox);
 		content.add(header("Nov LFG"));
 		lfgActivity.setFont(FontManager.getDefaultFont());
 		lfgActivity.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -205,6 +212,8 @@ public class TriglavPanel extends PluginPanel
 			}
 
 			final String title = lfgTitle.getText().trim();
+			lfgStatus.setText("Objavljam …");
+			lfgStatus.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			onCreateLfg.accept(activity, title.isEmpty() ? activity : title, LFG_MINUTES[lfgWhen.getSelectedIndex()],
 				((Number) lfgCapacity.getValue()).intValue(), lfgAttachSetup.isSelected(),
 				lfgUseLocation.isSelected() ? lfgPlace.getText().trim() : null);
@@ -213,6 +222,9 @@ public class TriglavPanel extends PluginPanel
 			lfgPlace.setText("");
 		});
 		content.add(lfgButton);
+		lfgStatus.setFont(FontManager.getDefaultFont());
+		lfgStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
+		content.add(lfgStatus);
 		content.add(Box.createVerticalStrut(4));
 		content.add(note("Objava gre v Discord klana z gumbom za pridružitev. Največ 3 na uro."));
 
@@ -292,18 +304,38 @@ public class TriglavPanel extends PluginPanel
 		this.onCheckGear = onCheckGear;
 	}
 
+	/** Result of posting an LFG, shown under the button; a successful post also clears the form. */
+	public void showLfgResult(String result)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			final boolean ok = result.startsWith("LFG objavljen");
+			lfgStatus.setText(ok ? "✓ LFG objavljen" : result);
+			lfgStatus.setForeground(ok ? ColorScheme.PROGRESS_COMPLETE_COLOR : ColorScheme.PROGRESS_ERROR_COLOR);
+			if (ok)
+			{
+				lfgActivity.setText("");
+				lfgTitle.setText("");
+			}
+		});
+	}
+
 	/** Redraws the live sections from the latest overview; safe to call from any thread. */
 	public void showOverview(Overview overview, boolean linked)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
 			live.removeAll();
+			myLfgBox.removeAll();
 			if (linked)
 			{
 				addLive(overview);
+				addMyLfg(overview);
 			}
 			live.revalidate();
 			live.repaint();
+			myLfgBox.revalidate();
+			myLfgBox.repaint();
 		});
 	}
 
@@ -312,7 +344,8 @@ public class TriglavPanel extends PluginPanel
 		live.add(spacer());
 		live.add(header("Točke: " + o.points));
 
-		if (!o.events.isEmpty() || !o.lfg.isEmpty())
+		final boolean otherLfg = o.lfg.stream().anyMatch(l -> !l.mine);
+		if (!o.events.isEmpty() || otherLfg)
 		{
 			live.add(spacer());
 			live.add(header("Danes"));
@@ -322,6 +355,10 @@ public class TriglavPanel extends PluginPanel
 			}
 			for (Overview.Lfg l : o.lfg)
 			{
+				if (l.mine)
+				{
+					continue; // own and joined LFGs are listed with their team in "Moj LFG"
+				}
 				live.add(line(when(l.startsAt) + "  LFG " + l.title + "  · " + l.taken + "/" + l.capacity + (l.mine ? "  (si noter)" : "")
 					+ (l.loc == null ? "" : "  · " + l.loc.label())));
 				if (l.owner)
@@ -365,6 +402,43 @@ public class TriglavPanel extends PluginPanel
 		live.add(spacer());
 		live.add(header("Smrti ta mesec"));
 		live.add(line(o.deathsThisMonth == 0 ? "ni jih" : o.deathsThisMonth + "× · izgubljeno " + gp(o.valueLostThisMonth)));
+	}
+
+	/** "Moj LFG": every LFG the character leads or joined, with the team, above the new-LFG form. */
+	private void addMyLfg(Overview o)
+	{
+		boolean any = false;
+		for (Overview.Lfg l : o.lfg)
+		{
+			if (!l.mine)
+			{
+				continue;
+			}
+
+			if (!any)
+			{
+				myLfgBox.add(header("Moj LFG"));
+				any = true;
+			}
+			myLfgBox.add(line(when(l.startsAt) + "  " + l.title + "  · " + l.taken + "/" + l.capacity + (l.owner ? "  (vodja)" : "")
+				+ (l.loc == null ? "" : "  · " + l.loc.label())));
+			for (String member : l.members)
+			{
+				myLfgBox.add(line("• " + member));
+			}
+			if (!l.owner)
+			{
+				final JButton leave = button("Odjavi se");
+				leave.addActionListener(e -> onJoinLfg.accept(l.id, true));
+				myLfgBox.add(leave);
+			}
+			myLfgBox.add(Box.createVerticalStrut(6));
+		}
+
+		if (any)
+		{
+			myLfgBox.add(spacer());
+		}
 	}
 
 	private static String when(Instant at)

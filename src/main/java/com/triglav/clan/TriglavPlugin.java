@@ -664,7 +664,12 @@ public class TriglavPlugin extends Plugin
 			return;
 		}
 
-		final java.util.function.Consumer<String> done = result -> chat("TRIGLAV: " + result);
+		final java.util.function.Consumer<String> done = result ->
+		{
+			chat("TRIGLAV: " + result);
+			panel.showLfgResult(result);
+			overviewClient.refreshNow(); // the new post appears in the panel right away
+		};
 
 		// Position and setup are read on the client thread, then the request goes out.
 		clientThread.invoke(() ->
