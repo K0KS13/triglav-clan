@@ -22,19 +22,24 @@ import net.runelite.api.events.StatChanged;
 public class LevelTracker
 {
 	/**
-	 * A real level-up is one level. Anything bigger in a single change is not training: the Duel Arena temporarily sets every
-	 * skill to 99 (level and XP) and restores the real values afterwards. Such a jump re-baselines silently.
+	 * The Duel Arena temporarily sets every skill to 99 (level and XP) and restores the real values afterwards. That shows as many
+	 * skills jumping a lot on the same tick. A lamp can also jump one skill by several levels (that is real), so a big jump is only
+	 * dropped when at least this many skills jump together.
 	 */
-	private static final int MAX_ORGANIC_JUMP = 4;
+	private static final int BIG_JUMP = 5;
+	private static final int BULK_SKILLS = 3;
 
 	private final Map<Skill, Integer> levels = new EnumMap<>(Skill.class);
 	private final Map<String, Integer> pending = new LinkedHashMap<>();
+	/** level-ups of BIG_JUMP or more levels seen this tick; kept unless a bulk of skills jumped together */
+	private final Map<String, Integer> bigJumps = new LinkedHashMap<>();
 
 	/** Called with the LOGIN snapshot: what we see now is the baseline, not a level-up. */
 	public void prime(Client client)
 	{
 		levels.clear();
 		pending.clear();
+		bigJumps.clear();
 		for (Skill skill : Skill.values())
 		{
 			if (skill != Skill.OVERALL)
@@ -48,6 +53,7 @@ public class LevelTracker
 	{
 		levels.clear();
 		pending.clear();
+		bigJumps.clear();
 	}
 
 	public void onStatChanged(StatChanged event)
@@ -59,15 +65,21 @@ public class LevelTracker
 		}
 
 		final Integer previous = levels.put(skill, event.getLevel());
-		if (previous != null && event.getLevel() > previous && event.getLevel() - previous <= MAX_ORGANIC_JUMP)
+		if (previous != null && event.getLevel() > previous)
 		{
-			pending.put(skill.getName(), event.getLevel());
+			(event.getLevel() - previous >= BIG_JUMP ? bigJumps : pending).put(skill.getName(), event.getLevel());
 		}
 	}
 
 	/** @return the LEVEL `extra` payload once a level-up is pending, or null */
 	public JsonObject onGameTick(Client client)
 	{
+		if (bigJumps.size() < BULK_SKILLS)
+		{
+			pending.putAll(bigJumps);
+		}
+		bigJumps.clear();
+
 		if (pending.isEmpty())
 		{
 			return null;

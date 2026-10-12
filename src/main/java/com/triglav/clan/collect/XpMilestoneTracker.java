@@ -19,11 +19,14 @@ import net.runelite.api.events.StatChanged;
 public class XpMilestoneTracker
 {
 	public static final int INTERVAL = 50_000_000;
-	/** No real single XP gain is this big; a jump like it is the Duel Arena's temporary 99s (restored afterwards), not milestone progress. */
-	private static final int MAX_ORGANIC_GAIN = 5_000_000;
+	/** The Duel Arena's temporary 99s jump many skills by millions of XP at once; a lone big gain (a lamp) is real. */
+	private static final int BIG_GAIN = 5_000_000;
+	private static final int BULK_SKILLS = 3;
 
 	private final Map<Skill, Integer> xp = new EnumMap<>(Skill.class);
 	private final JsonArray pending = new JsonArray();
+	private final java.util.List<String> bigGains = new java.util.ArrayList<>();
+	private final java.util.List<String> lastBigCrossing = new java.util.ArrayList<>();
 
 	public void prime(Client client)
 	{
@@ -60,15 +63,35 @@ public class XpMilestoneTracker
 		}
 
 		final Integer previous = xp.put(skill, event.getXp());
-		if (previous != null && event.getXp() - previous <= MAX_ORGANIC_GAIN && event.getXp() / INTERVAL > previous / INTERVAL)
+		if (previous == null)
+		{
+			return;
+		}
+
+		if (event.getXp() - previous >= BIG_GAIN)
+		{
+			bigGains.add(skill.getName());
+		}
+		if (event.getXp() / INTERVAL > previous / INTERVAL && event.getXp() - previous < BIG_GAIN)
 		{
 			pending.add(skill.getName());
+		}
+		else if (event.getXp() / INTERVAL > previous / INTERVAL)
+		{
+			lastBigCrossing.add(skill.getName());
 		}
 	}
 
 	/** @return the XP_MILESTONE `extra` payload once a milestone is pending, or null */
 	public JsonObject onGameTick()
 	{
+		if (bigGains.size() < BULK_SKILLS)
+		{
+			lastBigCrossing.forEach(pending::add); // a lone big gain (lamp) that crossed a milestone is real
+		}
+		bigGains.clear();
+		lastBigCrossing.clear();
+
 		if (pending.size() == 0)
 		{
 			return null;
