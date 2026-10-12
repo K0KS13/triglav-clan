@@ -43,6 +43,39 @@ public class TrackersTest
 	}
 
 	@Test
+	public void duelArenaStatsAreNotLevelUps()
+	{
+		final Client client = mock(Client.class);
+		when(client.getRealSkillLevel(any(Skill.class))).thenReturn(70);
+
+		final LevelTracker tracker = new LevelTracker();
+		tracker.prime(client);
+
+		// The arena sets every skill to 99 at once; leaving restores 70. Neither is a level-up.
+		tracker.onStatChanged(new StatChanged(Skill.ATTACK, 13_034_431, 99, 99));
+		tracker.onStatChanged(new StatChanged(Skill.MINING, 13_034_431, 99, 99));
+		assertNull(tracker.onGameTick(client));
+		tracker.onStatChanged(new StatChanged(Skill.ATTACK, 777_892, 70, 70));
+		assertNull(tracker.onGameTick(client));
+
+		// A normal level-up still counts.
+		tracker.onStatChanged(new StatChanged(Skill.ATTACK, 800_000, 71, 71));
+		assertNotNull(tracker.onGameTick(client));
+	}
+
+	@Test
+	public void duelArenaXpIsNotAMilestone()
+	{
+		final Client client = mock(Client.class);
+		when(client.getSkillExperience(any(Skill.class))).thenReturn(777_000);
+
+		final XpMilestoneTracker tracker = new XpMilestoneTracker();
+		tracker.prime(client);
+		tracker.onStatChanged(new StatChanged(Skill.ATTACK, 80_000_000, 99, 99)); // 777k -> 80M in one change
+		assertNull(tracker.onGameTick());
+	}
+
+	@Test
 	public void collectionLogTotalsStayQuietUntilKnown()
 	{
 		final Client client = mock(Client.class);

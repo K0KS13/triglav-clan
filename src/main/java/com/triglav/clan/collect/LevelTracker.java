@@ -21,6 +21,12 @@ import net.runelite.api.events.StatChanged;
 @Singleton
 public class LevelTracker
 {
+	/**
+	 * A real level-up is one level. Anything bigger in a single change is not training: the Duel Arena temporarily sets every
+	 * skill to 99 (level and XP) and restores the real values afterwards. Such a jump re-baselines silently.
+	 */
+	private static final int MAX_ORGANIC_JUMP = 4;
+
 	private final Map<Skill, Integer> levels = new EnumMap<>(Skill.class);
 	private final Map<String, Integer> pending = new LinkedHashMap<>();
 
@@ -53,7 +59,7 @@ public class LevelTracker
 		}
 
 		final Integer previous = levels.put(skill, event.getLevel());
-		if (previous != null && event.getLevel() > previous)
+		if (previous != null && event.getLevel() > previous && event.getLevel() - previous <= MAX_ORGANIC_JUMP)
 		{
 			pending.put(skill.getName(), event.getLevel());
 		}

@@ -19,6 +19,8 @@ import net.runelite.api.events.StatChanged;
 public class XpMilestoneTracker
 {
 	public static final int INTERVAL = 50_000_000;
+	/** No real single XP gain is this big; a jump like it is the Duel Arena's temporary 99s (restored afterwards), not milestone progress. */
+	private static final int MAX_ORGANIC_GAIN = 5_000_000;
 
 	private final Map<Skill, Integer> xp = new EnumMap<>(Skill.class);
 	private final JsonArray pending = new JsonArray();
@@ -58,7 +60,7 @@ public class XpMilestoneTracker
 		}
 
 		final Integer previous = xp.put(skill, event.getXp());
-		if (previous != null && event.getXp() / INTERVAL > previous / INTERVAL)
+		if (previous != null && event.getXp() - previous <= MAX_ORGANIC_GAIN && event.getXp() / INTERVAL > previous / INTERVAL)
 		{
 			pending.add(skill.getName());
 		}
