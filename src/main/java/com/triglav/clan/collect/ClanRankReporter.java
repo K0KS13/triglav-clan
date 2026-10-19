@@ -27,7 +27,7 @@ import okhttp3.Response;
 
 /**
  * Reads the in-game clan tab and reports ranks to the site (docs/plugin-brief.md §5.1), so
- * leadership stops retyping ranks by hand. Runs on login and every 30 minutes; reading the
+ * leadership stops retyping ranks by hand. Runs on login and every 5 minutes; reading the
  * channel itself must happen on the client thread, sending it must not.
  */
 @Slf4j
@@ -35,7 +35,7 @@ import okhttp3.Response;
 public class ClanRankReporter
 {
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-	private static final long INTERVAL_MINUTES = 30;
+	private static final long INTERVAL_MINUTES = 5;
 
 	private final Client client;
 	private final ClientThread clientThread;
