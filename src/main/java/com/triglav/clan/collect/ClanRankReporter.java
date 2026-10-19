@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.clan.ClanMember;
 import net.runelite.api.clan.ClanTitle;
+import net.runelite.api.clan.ClanChannel;
+import net.runelite.api.clan.ClanChannelMember;
 import net.runelite.api.clan.ClanID;
 import net.runelite.api.clan.ClanSettings;
 import net.runelite.client.callback.ClientThread;
@@ -59,7 +61,7 @@ public class ClanRankReporter
 			final JsonArray members = readMembers();
 			if (members != null && members.size() > 0)
 			{
-				send(members);
+				send(members, readOnline());
 			}
 			else
 			{
@@ -98,7 +100,35 @@ public class ClanRankReporter
 		return members;
 	}
 
-	private void send(JsonArray members)
+	/**
+	 * Clan members who are online in the clan chat right now. The site counts them as active, so a
+	 * member who is playing but has not installed the plugin (or earned no XP) is not marked inactive.
+	 */
+	private JsonArray readOnline()
+	{
+		final JsonArray online = new JsonArray();
+		final ClanChannel channel = client.getClanChannel(ClanID.CLAN);
+		if (channel == null)
+		{
+			return online;
+		}
+
+		for (ClanChannelMember member : channel.getMembers())
+		{
+			if (member.getName() == null)
+			{
+				continue;
+			}
+
+			final JsonObject json = new JsonObject();
+			json.addProperty("rsn", member.getName());
+			json.addProperty("world", member.getWorld());
+			online.add(json);
+		}
+		return online;
+	}
+
+	private void send(JsonArray members, JsonArray online)
 	{
 		final String clanCode = keyStore.ingestKey();
 		if (clanCode == null)
@@ -109,6 +139,7 @@ public class ClanRankReporter
 		final JsonObject payload = new JsonObject();
 		payload.addProperty("ingestKey", clanCode);
 		payload.add("members", members);
+		payload.add("online", online);
 
 		final HttpUrl url = HttpUrl.parse(ApiClient.siteUrl() + "/api/plugin/clan");
 		if (url == null)
