@@ -117,4 +117,16 @@ public interface TriglavConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "reportStars",
+		name = "Javi shooting star klanu",
+		description = "Ko v bližini vidiš padlo zvezdo (Crashed star), plugin javi klanski strani world, polje in velikost zvezde (clan.kokalj.dev/orodja/zvezde), "
+			+ "da jo lahko poiščejo drugi člani. Pošlje se samo zvezda, ne tvoja lokacija. Privzeto vklopljeno.",
+		position = 9
+	)
+	default boolean reportStars()
+	{
+		return true;
+	}
 }

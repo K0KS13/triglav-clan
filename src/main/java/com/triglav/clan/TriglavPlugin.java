@@ -36,6 +36,7 @@ import com.triglav.clan.overview.OverviewClient;
 import com.triglav.clan.remind.LfgReminder;
 import com.triglav.clan.remind.LocationOverlay;
 import com.triglav.clan.share.LocationSharer;
+import com.triglav.clan.star.StarReporter;
 import com.triglav.clan.share.ShareClient;
 import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
@@ -55,6 +56,7 @@ import net.runelite.api.events.ActorDeath;
 import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClanChannelChanged;
+import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.InventoryID;
@@ -179,6 +181,9 @@ public class TriglavPlugin extends Plugin
 
 	@Inject
 	private LocationSharer locationSharer;
+
+	@Inject
+	private StarReporter starReporter;
 
 	@Inject
 	private LfgReminder lfgReminder;
@@ -351,6 +356,12 @@ public class TriglavPlugin extends Plugin
 		autoGearTask = executor.schedule(() -> gearClient.sendCurrentSetup("", true, result ->
 		{
 		}), AUTO_GEAR_DELAY_SECONDS, TimeUnit.SECONDS);
+	}
+
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		starReporter.onGameObjectSpawned(event);
 	}
 
 	@Subscribe
