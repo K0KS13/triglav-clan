@@ -36,6 +36,9 @@ public class KillCountTracker
 	private final ConcurrentHashMap<String, Integer> counts = new ConcurrentHashMap<>();
 
 	private String boss;
+	/** The last boss/activity whose count the game announced, for naming loot that has no event of its own. */
+	private volatile String lastBossName;
+	private volatile long lastBossAt;
 	private int count;
 	private String time;
 	private String personalBest;
@@ -69,6 +72,8 @@ public class KillCountTracker
 			final int value = Integer.parseInt(matcher.group("count").replace(",", ""));
 			counts.put(Text.standardize(name), value);
 			boss = name;
+			lastBossName = name;
+			lastBossAt = System.currentTimeMillis();
 			count = value;
 			return;
 		}
@@ -156,5 +161,11 @@ public class KillCountTracker
 		{
 			return null;
 		}
+	}
+
+	/** @return the boss whose count was announced in the last two minutes, or null */
+	public String recentBoss()
+	{
+		return lastBossName != null && System.currentTimeMillis() - lastBossAt < 120_000 ? lastBossName : null;
 	}
 }

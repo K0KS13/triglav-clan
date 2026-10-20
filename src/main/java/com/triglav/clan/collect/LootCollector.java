@@ -65,4 +65,17 @@ public class LootCollector
 		extra.addProperty("category", category);
 		return extra;
 	}
+
+	/** @return the item id for an exact (case-insensitive) item name, or -1 */
+	public int itemId(String name)
+	{
+		for (net.runelite.http.api.item.ItemPrice price : itemManager.search(name))
+		{
+			if (price.getName().equalsIgnoreCase(name))
+			{
+				return price.getId();
+			}
+		}
+		return -1;
+	}
 }

@@ -38,6 +38,21 @@ public class ChatParsersTest
 	}
 
 	@Test
+	public void readsValuableDropMessages()
+	{
+		final JsonObject one = ValuableDropChat.parse("<col=ef1020>Valuable drop: Crystal armour seed (5,617,392 coins)</col>");
+		assertNotNull(one);
+		assertEquals("Crystal armour seed", one.get("item").getAsString());
+		assertEquals(1, one.get("quantity").getAsInt());
+		assertEquals(5617392L, one.get("value").getAsLong());
+
+		final JsonObject many = ValuableDropChat.parse("Valuable drop: 2,500 x Rune arrow (300,000 coins)");
+		assertNotNull(many);
+		assertEquals(2500, many.get("quantity").getAsInt());
+		assertNull(ValuableDropChat.parse("Jakvrh1 received a drop: Crystal armour seed (5,617,392 coins)"));
+	}
+
+	@Test
 	public void readsCompletedClues()
 	{
 		final JsonObject clue = ClueChat.parse(message("You have completed 1,234 Master Treasure Trails."));

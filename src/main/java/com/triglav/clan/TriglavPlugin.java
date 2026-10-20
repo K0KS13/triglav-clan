@@ -8,6 +8,7 @@ import com.triglav.clan.bingo.BingoClient;
 import com.triglav.clan.bingo.BingoOverlay;
 import com.triglav.clan.collect.ClanBroadcastReporter;
 import com.triglav.clan.collect.ClanRankReporter;
+import com.triglav.clan.collect.ValuableDropChat;
 import com.triglav.clan.collect.ClueChat;
 import com.triglav.clan.collect.CollectionLogChat;
 import com.triglav.clan.collect.CollectionLogTotals;
@@ -303,6 +304,7 @@ public class TriglavPlugin extends Plugin
 
 		killCountTracker.onChatMessage(event);
 		petDetector.onChatMessage(event);
+		onValuableDropMessage(event);
 
 		final String clogItem = CollectionLogChat.newItemName(event);
 		if (clogItem != null)
@@ -427,8 +429,44 @@ public class TriglavPlugin extends Plugin
 		sendLoot(lootCollector.build(event.getName(), event.getType().name(), event.getItems()));
 	}
 
+	/** Item ids the Loot Tracker path sent recently, so the valuable-drop fallback below does not report them twice. */
+	private final java.util.Map<Integer, Long> recentLootIds = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/**
+	 * "Valuable drop: ..." game message: drops the Loot Tracker never reports (the Gauntlet's reward chest) still
+	 * reach the site with a screenshot. Waits a moment; if the normal loot event already covered the item, nothing is sent.
+	 */
+	private void onValuableDropMessage(ChatMessage event)
+	{
+		final JsonObject drop = ValuableDropChat.parse(event.getMessage());
+		if (drop == null || !keyStore.isLinked())
+		{
+			return;
+		}
+
+		executor.schedule(() -> clientThread.invoke(() ->
+		{
+			final int id = lootCollector.itemId(drop.get("item").getAsString());
+			final Long sentAt = recentLootIds.get(id);
+			if (id < 0 || (sentAt != null && System.currentTimeMillis() - sentAt < 20_000))
+			{
+				return;
+			}
+
+			final String boss = killCountTracker.recentBoss();
+			sendLoot(lootCollector.build(boss != null ? boss : "Valuable drop", "EVENT",
+				java.util.Collections.singletonList(new net.runelite.client.game.ItemStack(id, drop.get("quantity").getAsInt()))));
+		}), 3, TimeUnit.SECONDS);
+	}
+
 	private void sendLoot(JsonObject extra)
 	{
+		final long sentNow = System.currentTimeMillis();
+		for (JsonElement item : extra.getAsJsonArray("items"))
+		{
+			recentLootIds.put(item.getAsJsonObject().get("id").getAsInt(), sentNow);
+		}
+
 		if (client.getGameState() != GameState.LOGGED_IN)
 		{
 			return;
