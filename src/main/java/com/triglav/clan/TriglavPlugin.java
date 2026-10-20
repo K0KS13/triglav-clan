@@ -6,6 +6,7 @@ import com.google.inject.Provides;
 import com.triglav.clan.bingo.BingoBoard;
 import com.triglav.clan.bingo.BingoClient;
 import com.triglav.clan.bingo.BingoOverlay;
+import com.triglav.clan.collect.ClanBroadcastReporter;
 import com.triglav.clan.collect.ClanRankReporter;
 import com.triglav.clan.collect.ClueChat;
 import com.triglav.clan.collect.CollectionLogChat;
@@ -186,6 +187,9 @@ public class TriglavPlugin extends Plugin
 	private StarReporter starReporter;
 
 	@Inject
+	private ClanBroadcastReporter clanBroadcastReporter;
+
+	@Inject
 	private LfgReminder lfgReminder;
 
 	@Inject
@@ -282,9 +286,15 @@ public class TriglavPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		final ChatMessageType type = event.getType();
+		if (type == ChatMessageType.CLAN_MESSAGE || type == ChatMessageType.CLAN_GUEST_MESSAGE)
+		{
+			clanBroadcastReporter.onChatMessage(event);
+			return;
+		}
+
 		// Only the game's own messages: a player could otherwise type "Your Zulrah kill count is:
 		// 1000" in public chat and have it reported as theirs.
-		final ChatMessageType type = event.getType();
 		if (type != ChatMessageType.GAMEMESSAGE && type != ChatMessageType.SPAM
 			&& type != ChatMessageType.FRIENDSCHATNOTIFICATION)
 		{

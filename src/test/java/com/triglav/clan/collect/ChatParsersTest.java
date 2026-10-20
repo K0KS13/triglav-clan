@@ -17,6 +17,27 @@ public class ChatParsersTest
 	}
 
 	@Test
+	public void readsClanDropBroadcasts()
+	{
+		final JsonObject one = ClanBroadcastChat.parse("Jakvrh1 received a drop: Crystal armour seed (5,617,392 coins)");
+		assertNotNull(one);
+		assertEquals("Jakvrh1", one.get("rsn").getAsString());
+		assertEquals("Crystal armour seed", one.get("item").getAsString());
+		assertEquals(1, one.get("quantity").getAsInt());
+		assertEquals(5617392L, one.get("value").getAsLong());
+
+		final JsonObject many = ClanBroadcastChat.parse("<col=ef1020>Ti Ne received a drop: 2,500 x Rune arrow (300,000 coins).");
+		assertNotNull(many);
+		assertEquals("Ti Ne", many.get("rsn").getAsString());
+		assertEquals("Rune arrow", many.get("item").getAsString());
+		assertEquals(2500, many.get("quantity").getAsInt());
+		assertEquals(300000L, many.get("value").getAsLong());
+
+		assertNull(ClanBroadcastChat.parse("NiNiBanke has reached combat level 75."));
+		assertNull(ClanBroadcastChat.parse("Jakvrh1 received a drop: Pet rock"));
+	}
+
+	@Test
 	public void readsCompletedClues()
 	{
 		final JsonObject clue = ClueChat.parse(message("You have completed 1,234 Master Treasure Trails."));
