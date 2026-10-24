@@ -70,6 +70,7 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.plugins.Plugin;
@@ -248,6 +249,7 @@ public class TriglavPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		sendLogoutNow();
 		lfgReminder.shutDown();
 		locationSharer.clear();
 		if (autoGearTask != null)
@@ -594,6 +596,27 @@ public class TriglavPlugin extends Plugin
 		}
 		apiClient.send(Envelope.create(client, "LOGIN", extra), null);
 		log.debug("TRIGLAV: sent LOGIN snapshot");
+	}
+
+	/**
+	 * Closing RuneLite while logged in never produces a LOGIN_SCREEN state, so the site would show the member as
+	 * online until a timeout. Send LOGOUT immediately (blocking, short timeout) when the client or the plugin stops.
+	 */
+	private void sendLogoutNow()
+	{
+		if (lastGameState != GameState.LOGGED_IN || lastPlayerName == null)
+		{
+			return;
+		}
+		lastGameState = GameState.LOGIN_SCREEN;
+		apiClient.sendNow(Envelope.create(client, "LOGOUT", new JsonObject(), lastPlayerName));
+		log.debug("TRIGLAV: sent LOGOUT on shutdown");
+	}
+
+	@Subscribe
+	public void onClientShutdown(ClientShutdown event)
+	{
+		sendLogoutNow();
 	}
 
 	private void sendLogout()

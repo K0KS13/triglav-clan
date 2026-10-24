@@ -93,6 +93,33 @@ public class ApiClient
 		queue.addLast(new QueuedEvent(envelope, screenshot));
 	}
 
+	/**
+	 * Delivers one event right now on the calling thread, for the moment the client is closing and the queue
+	 * will never be drained again. Short timeout so closing RuneLite is never held up; failures are dropped.
+	 */
+	public void sendNow(JsonObject envelope)
+	{
+		if (!isPaired() || !envelope.has("playerName") || envelope.get("playerName").getAsString().isEmpty())
+		{
+			return;
+		}
+		final String key = keyStore.ingestKey();
+		final HttpUrl url = key == null ? null : HttpUrl.parse(siteUrl() + "/api/dink/" + key);
+		if (url == null)
+		{
+			return;
+		}
+		final Request request = new Request.Builder().url(url).post(RequestBody.create(JSON, envelope.toString())).build();
+		try (Response response = httpClient.newBuilder().callTimeout(3, TimeUnit.SECONDS).build().newCall(request).execute())
+		{
+			log.debug("Immediate send answered HTTP {}", response.code());
+		}
+		catch (IOException e)
+		{
+			log.debug("Immediate send failed: {}", e.getMessage());
+		}
+	}
+
 	private void drain()
 	{
 		QueuedEvent event;
