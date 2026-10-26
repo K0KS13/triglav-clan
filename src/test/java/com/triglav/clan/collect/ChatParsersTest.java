@@ -38,6 +38,23 @@ public class ChatParsersTest
 	}
 
 	@Test
+	public void readsClanDeathBroadcasts()
+	{
+		final JsonObject one = ClanBroadcastChat.parseDeath("Oderuh has been defeated by Lesstellyak in The Wilderness and lost (1,154,234 coins) worth of loot.");
+		assertNotNull(one);
+		assertEquals("Oderuh", one.get("rsn").getAsString());
+		assertEquals("Lesstellyak", one.get("killer").getAsString());
+		assertEquals("The Wilderness", one.get("location").getAsString());
+		assertEquals(1154234L, one.get("value").getAsLong());
+
+		final JsonObject tail = ClanBroadcastChat.parseDeath("<col=ef1020>Inqisative has been defeated by Lesstellyak in The Wilderness and lost (1,979,357 coins) worth of loot....and now everyone knows.</col>");
+		assertNotNull(tail);
+		assertEquals(1979357L, tail.get("value").getAsLong());
+
+		assertNull(ClanBroadcastChat.parseDeath("Jakvrh1 received a drop: Crystal armour seed (5,617,392 coins)"));
+	}
+
+	@Test
 	public void readsValuableDropMessages()
 	{
 		final JsonObject one = ValuableDropChat.parse("<col=ef1020>Valuable drop: Crystal armour seed (5,617,392 coins)</col>");

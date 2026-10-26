@@ -18,7 +18,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * Reports "X received a drop: ..." clan broadcasts to the clan site (clan.kokalj.dev). The site de-duplicates
+ * Reports "X received a drop: ..." and "X has been defeated by Y ..." clan broadcasts to the clan site (clan.kokalj.dev). The site de-duplicates
  * them against drops the player's own client already sent, so a drop never counts twice.
  */
 @Slf4j
@@ -54,14 +54,21 @@ public class ClanBroadcastReporter
 			return;
 		}
 
-		final JsonObject drop = ClanBroadcastChat.parse(event.getMessage());
+		JsonObject drop = ClanBroadcastChat.parse(event.getMessage());
+		final boolean death = drop == null;
+		if (death)
+		{
+			drop = ClanBroadcastChat.parseDeath(event.getMessage());
+		}
 		final String key = keyStore.ingestKey();
 		if (drop == null || key == null)
 		{
 			return;
 		}
 
-		final String signature = drop.get("rsn").getAsString() + "|" + drop.get("item").getAsString() + "|" + drop.get("value").getAsLong();
+		final String signature = death
+			? "death|" + drop.get("rsn").getAsString() + "|" + drop.get("killer").getAsString() + "|" + drop.get("value").getAsLong()
+			: drop.get("rsn").getAsString() + "|" + drop.get("item").getAsString() + "|" + drop.get("value").getAsLong();
 		final long now = System.currentTimeMillis();
 		if (signature.equals(lastSignature) && now - lastSentAt < RESEND_MS)
 		{
@@ -71,12 +78,13 @@ public class ClanBroadcastReporter
 		lastSentAt = now;
 
 		drop.addProperty("ingestKey", key);
-		executor.execute(() -> post(drop));
+		final JsonObject payload = drop;
+		executor.execute(() -> post(payload, death ? "/api/plugin/broadcast-death" : "/api/plugin/broadcast"));
 	}
 
-	private void post(JsonObject body)
+	private void post(JsonObject body, String path)
 	{
-		final HttpUrl url = HttpUrl.parse(ApiClient.siteUrl() + "/api/plugin/broadcast");
+		final HttpUrl url = HttpUrl.parse(ApiClient.siteUrl() + path);
 		if (url == null)
 		{
 			return;

@@ -15,6 +15,10 @@ public final class ClanBroadcastChat
 	private static final Pattern DROP = Pattern.compile(
 		"^(?<rsn>.{1,12}?) received a drop: (?:(?<qty>[\\d,]+) x )?(?<item>.+?) \\((?<value>[\\d,]+) coins\\)\\.?$");
 
+	/** "Oderuh has been defeated by Lesstellyak in The Wilderness and lost (1,154,234 coins) worth of loot." (the ending varies) */
+	private static final Pattern DEATH = Pattern.compile(
+		"^(?<rsn>.{1,12}?) has been defeated by (?<killer>.{1,12}?) in (?<where>.+?) and lost \\((?<value>[\\d,]+) coins\\) worth of loot.*$");
+
 	private ClanBroadcastChat()
 	{
 	}
@@ -34,5 +38,22 @@ public final class ClanBroadcastChat
 		drop.addProperty("quantity", matcher.group("qty") == null ? 1 : Integer.parseInt(matcher.group("qty").replace(",", "")));
 		drop.addProperty("value", Long.parseLong(matcher.group("value").replace(",", "")));
 		return drop;
+	}
+
+	/** @return {rsn, killer, location, value} (value = coins of loot lost), or null if this is not a death broadcast */
+	public static JsonObject parseDeath(String message)
+	{
+		final Matcher matcher = DEATH.matcher(Text.removeTags(message).replace(' ', ' ').trim());
+		if (!matcher.matches())
+		{
+			return null;
+		}
+
+		final JsonObject death = new JsonObject();
+		death.addProperty("rsn", matcher.group("rsn").trim());
+		death.addProperty("killer", matcher.group("killer").trim());
+		death.addProperty("location", matcher.group("where").trim());
+		death.addProperty("value", Long.parseLong(matcher.group("value").replace(",", "")));
+		return death;
 	}
 }

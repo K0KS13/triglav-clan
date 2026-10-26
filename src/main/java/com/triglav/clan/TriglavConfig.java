@@ -132,9 +132,9 @@ public interface TriglavConfig extends Config
 
 	@ConfigItem(
 		keyName = "reportClanBroadcasts",
-		name = "Javi objave dropov v klanu",
+		name = "Javi objave dropov in smrti v klanu",
 		description = "Objava »X received a drop: …« v klanskem klepetu vidijo vsi člani. Plugin jo javi klanski strani, da je drop viden tudi, če ga igralčev "
-			+ "odjemalec ni poročal (npr. skrinje ali igralci brez plugina). Pošlje se samo besedilo objave (igralec, predmet, vrednost). Privzeto vklopljeno.",
+			+ "odjemalec ni poročal (npr. skrinje ali igralci brez plugina). Enako velja za objavo smrti v PK-ju (»X has been defeated by Y …«), ki popravi podatke o smrti. Pošlje se samo besedilo objave (igralec, predmet ali ubijalec, vrednost). Privzeto vklopljeno.",
 		position = 10
 	)
 	default boolean reportClanBroadcasts()
