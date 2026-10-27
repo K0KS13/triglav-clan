@@ -21,6 +21,7 @@ import com.triglav.clan.collect.LootCollector;
 import com.triglav.clan.collect.LootValue;
 import com.triglav.clan.collect.PetDetector;
 import com.triglav.clan.collect.PkSessionTracker;
+import com.triglav.clan.star.StarGuide;
 import com.triglav.clan.collect.PlayerKillTracker;
 import com.triglav.clan.collect.QuestTracker;
 import com.triglav.clan.collect.SlayerChat;
@@ -167,6 +168,9 @@ public class TriglavPlugin extends Plugin
 	private PkSessionTracker pkSessionTracker;
 
 	@Inject
+	private StarGuide starGuide;
+
+	@Inject
 	private BingoClient bingoClient;
 
 	@Inject
@@ -232,6 +236,16 @@ public class TriglavPlugin extends Plugin
 		panel.setOnShare(this::shareWithClan);
 		panel.setOnCreateLfg(this::createLfg);
 		panel.setOnCheckGear(this::checkLfgGear);
+		panel.setOnStarGo(() -> starGuide.go(this::chat));
+		panel.setOnStarClear(starGuide::clearPath);
+		starGuide.setListener(t ->
+		{
+			panel.showStar(t == null ? null : t.label());
+			if (t != null)
+			{
+				clientThread.invoke(() -> chat("TRIGLAV: zvezda s strani: " + t.label() + ". V panelu klikni »Pojdi«."));
+			}
+		});
 		panel.setOnJoinLfg((postId, leave) -> overviewClient.joinLfg(postId, leave, result -> chat("TRIGLAV: " + result)));
 		overviewClient.setListener(overview -> panel.showOverview(overview, keyStore.isLinked()));
 		bingoClient.setAnnouncer(message ->
@@ -547,6 +561,7 @@ public class TriglavPlugin extends Plugin
 			{
 				loginPending = false;
 				sendLogin();
+				starGuide.onLoggedIn();
 				clanRankReporter.reportNow();
 			}
 		}

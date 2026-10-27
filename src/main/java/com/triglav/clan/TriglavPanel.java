@@ -88,6 +88,14 @@ public class TriglavPanel extends PluginPanel
 
 	/** Rebuilt on every overview refresh: today, goals, deaths and points. */
 	private final JPanel live = new JPanel();
+	private final JPanel starBox = new JPanel();
+	private final JLabel starLabel = new JLabel();
+	private Runnable onStarGo = () ->
+	{
+	};
+	private Runnable onStarClear = () ->
+	{
+	};
 	/** The LFG posts the member leads or has joined, with who is in; sits right above the new-LFG form. */
 	private final JPanel myLfgBox = new JPanel();
 	private final JLabel lfgStatus = new JLabel(" ");
@@ -122,6 +130,28 @@ public class TriglavPanel extends PluginPanel
 		live.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		live.setAlignmentX(Component.LEFT_ALIGNMENT);
 		content.add(live);
+
+		// Zvezda, poslana s strani (»V igro« pri Shooting Stars); skrita, dokler je ni.
+		starBox.setLayout(new BoxLayout(starBox, BoxLayout.Y_AXIS));
+		starBox.setOpaque(false);
+		starBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+		starBox.add(spacer());
+		starBox.add(header("Zvezda s strani"));
+		starLabel.setFont(FontManager.getDefaultFont());
+		starLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		starLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		starBox.add(starLabel);
+		starBox.add(Box.createVerticalStrut(4));
+		final JButton starGo = button("Pojdi (world + pot)");
+		starGo.setToolTipText("Zamenja world in pokaže pot do zvezde (potreben plugin Shortest Path)");
+		starGo.addActionListener(e -> onStarGo.run());
+		starBox.add(starGo);
+		starBox.add(Box.createVerticalStrut(4));
+		final JButton starClear = button("Počisti pot");
+		starClear.addActionListener(e -> onStarClear.run());
+		starBox.add(starClear);
+		starBox.setVisible(false);
+		content.add(starBox);
 
 		content.add(spacer());
 		linkSection.setLayout(new BoxLayout(linkSection, BoxLayout.Y_AXIS));
@@ -287,6 +317,27 @@ public class TriglavPanel extends PluginPanel
 	public void setOnCreateLfg(LfgSubmit onCreateLfg)
 	{
 		this.onCreateLfg = onCreateLfg;
+	}
+
+	public void setOnStarGo(Runnable onStarGo)
+	{
+		this.onStarGo = onStarGo;
+	}
+
+	public void setOnStarClear(Runnable onStarClear)
+	{
+		this.onStarClear = onStarClear;
+	}
+
+	/** @param label the star sent from the site, or null to hide the box */
+	public void showStar(String label)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			starBox.setVisible(label != null);
+			starLabel.setText("<html><body style='width:150px'>" + (label == null ? "" : label) + "</body></html>");
+			revalidate();
+		});
 	}
 
 	public void setOnShare(Consumer<String> onShare)
