@@ -20,6 +20,7 @@ import com.triglav.clan.collect.LevelTracker;
 import com.triglav.clan.collect.LootCollector;
 import com.triglav.clan.collect.LootValue;
 import com.triglav.clan.collect.PetDetector;
+import com.triglav.clan.collect.PkSessionTracker;
 import com.triglav.clan.collect.PlayerKillTracker;
 import com.triglav.clan.collect.QuestTracker;
 import com.triglav.clan.collect.SlayerChat;
@@ -161,6 +162,9 @@ public class TriglavPlugin extends Plugin
 
 	@Inject
 	private PlayerKillTracker playerKillTracker;
+
+	@Inject
+	private PkSessionTracker pkSessionTracker;
 
 	@Inject
 	private BingoClient bingoClient;
@@ -464,6 +468,11 @@ public class TriglavPlugin extends Plugin
 
 	private void sendLoot(JsonObject extra)
 	{
+		if (extra.has("source") && "Loot Chest".equals(extra.get("source").getAsString()))
+		{
+			pkSessionTracker.onChest(LootValue.total(extra.getAsJsonArray("items")));
+		}
+
 		final long sentNow = System.currentTimeMillis();
 		for (JsonElement item : extra.getAsJsonArray("items"))
 		{
@@ -551,6 +560,16 @@ public class TriglavPlugin extends Plugin
 		{
 			apiClient.send(Envelope.create(client, "DEATH", deathExtra), null);
 		}
+		if (deathExtra != null)
+		{
+			pkSessionTracker.onDeath(deathExtra);
+		}
+
+		final JsonObject pkSession = pkSessionTracker.onGameTick();
+		if (pkSession != null)
+		{
+			apiClient.send(Envelope.create(client, "PK_SESSION", pkSession), null);
+		}
 
 		final JsonObject levelExtra = levelTracker.onGameTick(client);
 		if (levelExtra != null)
@@ -577,6 +596,7 @@ public class TriglavPlugin extends Plugin
 			for (JsonObject kill : kills)
 			{
 				envelopes.add(Envelope.create(client, "PLAYER_KILL", kill));
+				pkSessionTracker.onKill(kill);
 			}
 
 			if (config.sendScreenshots())
