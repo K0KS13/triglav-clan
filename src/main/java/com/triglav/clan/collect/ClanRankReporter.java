@@ -61,7 +61,7 @@ public class ClanRankReporter
 			final JsonArray members = readMembers();
 			if (members != null && members.size() > 0)
 			{
-				send(members, readOnline());
+				send(members, readOnline(), readGuests());
 			}
 			else
 			{
@@ -128,7 +128,35 @@ public class ClanRankReporter
 		return online;
 	}
 
-	private void send(JsonArray members, JsonArray online)
+	/**
+	 * Guests in the clan chat right now (people who joined the chat without being clan members). The site uses it to tell
+	 * "left the clan" from "left the clan but still sits in the chat as a guest". Guests are never counted as members.
+	 */
+	private JsonArray readGuests()
+	{
+		final JsonArray guests = new JsonArray();
+		final ClanChannel channel = client.getGuestClanChannel();
+		if (channel == null)
+		{
+			return guests;
+		}
+
+		for (ClanChannelMember member : channel.getMembers())
+		{
+			if (member.getName() == null)
+			{
+				continue;
+			}
+
+			final JsonObject json = new JsonObject();
+			json.addProperty("rsn", member.getName());
+			json.addProperty("world", member.getWorld());
+			guests.add(json);
+		}
+		return guests;
+	}
+
+	private void send(JsonArray members, JsonArray online, JsonArray guests)
 	{
 		final String clanCode = keyStore.ingestKey();
 		if (clanCode == null)
@@ -140,6 +168,7 @@ public class ClanRankReporter
 		payload.addProperty("ingestKey", clanCode);
 		payload.add("members", members);
 		payload.add("online", online);
+		payload.add("guests", guests);
 
 		final HttpUrl url = HttpUrl.parse(ApiClient.siteUrl() + "/api/plugin/clan");
 		if (url == null)
