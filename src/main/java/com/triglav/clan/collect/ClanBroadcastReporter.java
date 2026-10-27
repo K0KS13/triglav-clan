@@ -5,6 +5,8 @@ import com.triglav.clan.TriglavConfig;
 import com.triglav.clan.net.ApiClient;
 import com.triglav.clan.net.KeyStore;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -34,6 +36,7 @@ public class ClanBroadcastReporter
 	private final OkHttpClient httpClient;
 	private final ScheduledExecutorService executor;
 
+	private final Set<String> seenUnknown = new HashSet<>();
 	private String lastSignature = "";
 	private long lastSentAt;
 
@@ -54,21 +57,53 @@ public class ClanBroadcastReporter
 			return;
 		}
 
-		JsonObject drop = ClanBroadcastChat.parse(event.getMessage());
-		final boolean death = drop == null;
-		if (death)
-		{
-			drop = ClanBroadcastChat.parseDeath(event.getMessage());
-		}
 		final String key = keyStore.ingestKey();
-		if (drop == null || key == null)
+		if (key == null)
 		{
 			return;
 		}
 
-		final String signature = death
-			? "death|" + drop.get("rsn").getAsString() + "|" + drop.get("killer").getAsString() + "|" + drop.get("value").getAsLong()
-			: drop.get("rsn").getAsString() + "|" + drop.get("item").getAsString() + "|" + drop.get("value").getAsLong();
+		JsonObject drop = ClanBroadcastChat.parse(event.getMessage());
+		String path = "/api/plugin/broadcast";
+		String signature = null;
+		if (drop == null)
+		{
+			drop = ClanBroadcastChat.parseDeath(event.getMessage());
+			path = "/api/plugin/broadcast-death";
+		}
+		if (drop == null)
+		{
+			drop = ClanBroadcastChat.parseEvent(event.getMessage());
+			path = "/api/plugin/broadcast-event";
+		}
+		if (drop == null)
+		{
+			// Not a format we know: send the plain text once per session so the site can learn new broadcast types.
+			final String text = ClanBroadcastChat.plain(event.getMessage());
+			if (text.length() < 5 || !seenUnknown.add(text) || seenUnknown.size() > 200)
+			{
+				return;
+			}
+			drop = new JsonObject();
+			drop.addProperty("kind", "unknown");
+			drop.addProperty("text", text);
+			path = "/api/plugin/broadcast-event";
+			signature = "unknown|" + text;
+		}
+		else if (path.equals("/api/plugin/broadcast"))
+		{
+			signature = drop.get("rsn").getAsString() + "|" + drop.get("item").getAsString() + "|" + drop.get("value").getAsLong();
+		}
+		else if (path.equals("/api/plugin/broadcast-death"))
+		{
+			signature = "death|" + drop.get("rsn").getAsString() + "|" + drop.get("killer").getAsString() + "|" + drop.get("value").getAsLong();
+		}
+		else
+		{
+			signature = drop.get("kind").getAsString() + "|" + drop.get("rsn").getAsString() + "|"
+				+ (drop.has("skill") ? drop.get("skill").getAsString() : drop.get("item").getAsString());
+		}
+
 		final long now = System.currentTimeMillis();
 		if (signature.equals(lastSignature) && now - lastSentAt < RESEND_MS)
 		{
@@ -79,7 +114,8 @@ public class ClanBroadcastReporter
 
 		drop.addProperty("ingestKey", key);
 		final JsonObject payload = drop;
-		executor.execute(() -> post(payload, death ? "/api/plugin/broadcast-death" : "/api/plugin/broadcast"));
+		final String endpoint = path;
+		executor.execute(() -> post(payload, endpoint));
 	}
 
 	private void post(JsonObject body, String path)

@@ -55,6 +55,25 @@ public class ChatParsersTest
 	}
 
 	@Test
+	public void readsClanEventBroadcasts()
+	{
+		final JsonObject level = ClanBroadcastChat.parseEvent("Jakvrh1 has reached level 99 in Hitpoints.");
+		assertNotNull(level);
+		assertEquals("level99", level.get("kind").getAsString());
+		assertEquals("Jakvrh1", level.get("rsn").getAsString());
+		assertEquals("Hitpoints", level.get("skill").getAsString());
+		assertEquals("Mining", ClanBroadcastChat.parseEvent("<col=ef1020>Ti Ne has reached 99 Mining.").get("skill").getAsString());
+
+		final JsonObject clog = ClanBroadcastChat.parseEvent("Jakvrh1 received a new collection log item: Abyssal whip (432/1,477)");
+		assertNotNull(clog);
+		assertEquals("clog", clog.get("kind").getAsString());
+		assertEquals("Abyssal whip", clog.get("item").getAsString());
+
+		assertNull(ClanBroadcastChat.parseEvent("Jakvrh1 received a drop: Crystal armour seed (5,617,392 coins)"));
+		assertEquals("Jakvrh1 has completed a quest.", ClanBroadcastChat.plain("<col=ef1020>Jakvrh1 has completed a quest.</col>"));
+	}
+
+	@Test
 	public void readsValuableDropMessages()
 	{
 		final JsonObject one = ValuableDropChat.parse("<col=ef1020>Valuable drop: Crystal armour seed (5,617,392 coins)</col>");

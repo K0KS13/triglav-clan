@@ -19,6 +19,11 @@ public final class ClanBroadcastChat
 	private static final Pattern DEATH = Pattern.compile(
 		"^(?<rsn>.{1,12}?) has been defeated by (?<killer>.{1,12}?) in (?<where>.+?) and lost \\((?<value>[\\d,]+) coins\\) worth of loot.*$");
 
+	/** "Jakvrh1 has reached level 99 in Hitpoints." / "Jakvrh1 has reached 99 Hitpoints." */
+	private static final Pattern LEVEL99 = Pattern.compile("^(?<rsn>.{1,12}?) has reached (?:level )?99 (?:in )?(?<skill>[A-Za-z]+)\\.?$");
+	/** "Jakvrh1 received a new collection log item: Abyssal whip (432/1477)" */
+	private static final Pattern CLOG = Pattern.compile("^(?<rsn>.{1,12}?) received a new collection log item: (?<item>.+?) \\(\\d[\\d,]*/\\d[\\d,]*\\)\\.?$");
+
 	private ClanBroadcastChat()
 	{
 	}
@@ -55,5 +60,38 @@ public final class ClanBroadcastChat
 		death.addProperty("location", matcher.group("where").trim());
 		death.addProperty("value", Long.parseLong(matcher.group("value").replace(",", "")));
 		return death;
+	}
+
+	/** @return {kind: "level99", rsn, skill} or {kind: "clog", rsn, item}, or null if this is neither */
+	public static JsonObject parseEvent(String message)
+	{
+		final String text = Text.removeTags(message).replace(' ', ' ').trim();
+		final Matcher level = LEVEL99.matcher(text);
+		if (level.matches())
+		{
+			final JsonObject json = new JsonObject();
+			json.addProperty("kind", "level99");
+			json.addProperty("rsn", level.group("rsn").trim());
+			json.addProperty("skill", level.group("skill"));
+			return json;
+		}
+
+		final Matcher clog = CLOG.matcher(text);
+		if (clog.matches())
+		{
+			final JsonObject json = new JsonObject();
+			json.addProperty("kind", "clog");
+			json.addProperty("rsn", clog.group("rsn").trim());
+			json.addProperty("item", clog.group("item").trim());
+			return json;
+		}
+		return null;
+	}
+
+	/** Clean text of a clan broadcast, for the "unknown message" samples that teach the site new formats. */
+	public static String plain(String message)
+	{
+		final String text = Text.removeTags(message).replace(' ', ' ').trim();
+		return text.length() > 220 ? text.substring(0, 220) : text;
 	}
 }
