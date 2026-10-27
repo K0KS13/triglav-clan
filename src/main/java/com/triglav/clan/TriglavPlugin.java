@@ -43,6 +43,7 @@ import com.triglav.clan.share.ShareClient;
 import com.triglav.clan.util.GameText;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -572,9 +573,29 @@ public class TriglavPlugin extends Plugin
 		final List<JsonObject> kills = playerKillTracker.onGameTick(client);
 		if (kills != null)
 		{
+			final List<JsonObject> envelopes = new ArrayList<>();
 			for (JsonObject kill : kills)
 			{
-				apiClient.send(Envelope.create(client, "PLAYER_KILL", kill), null);
+				envelopes.add(Envelope.create(client, "PLAYER_KILL", kill));
+			}
+
+			if (config.sendScreenshots())
+			{
+				// One screenshot of the moment of the kill (victim's loot on the ground), shared by every kill of this tick.
+				captureScreenshot(png ->
+				{
+					for (JsonObject envelope : envelopes)
+					{
+						apiClient.send(envelope, png);
+					}
+				});
+			}
+			else
+			{
+				for (JsonObject envelope : envelopes)
+				{
+					apiClient.send(envelope, null);
+				}
 			}
 		}
 	}
